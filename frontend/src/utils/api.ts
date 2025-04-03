@@ -60,6 +60,7 @@ export const API = {
     create: `${API_URL}/api/assignment-requests`,
     byId: (id: number) => `${API_URL}/api/assignment-requests/${id}`,
     accept: (id: number) => `${API_URL}/api/assignment-requests/${id}/accept`,
+    delete: (id: number) => `${API_URL}/api/assignment-requests/${id}`,
   },
   
   // Assignment endpoints

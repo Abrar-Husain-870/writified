@@ -550,6 +550,53 @@ app.post('/api/assignment-requests/:id/accept', isAuthenticated, async (req, res
     }
 });
 
+// Delete an assignment request
+app.delete('/api/assignment-requests/:id', isAuthenticated, async (req, res) => {
+    const requestId = req.params.id;
+    
+    try {
+        // Start transaction
+        await pool.query('BEGIN');
+        
+        // Check if this is the user's own request and if it's still open
+        const checkRequest = await pool.query(`
+            SELECT client_id, status FROM assignment_requests
+            WHERE id = $1
+        `, [requestId]);
+        
+        if (checkRequest.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ error: 'Assignment request not found' });
+        }
+        
+        // Check if the user is the owner of the request
+        if (checkRequest.rows[0].client_id !== req.user.id) {
+            await pool.query('ROLLBACK');
+            return res.status(403).json({ error: 'You can only delete your own assignment requests' });
+        }
+        
+        // Check if the request is still open
+        if (checkRequest.rows[0].status !== 'open') {
+            await pool.query('ROLLBACK');
+            return res.status(403).json({ error: 'You cannot delete an assignment request that has already been assigned' });
+        }
+        
+        // Delete the assignment request
+        await pool.query(`
+            DELETE FROM assignment_requests 
+            WHERE id = $1
+        `, [requestId]);
+        
+        await pool.query('COMMIT');
+        
+        res.json({ message: 'Assignment request deleted successfully' });
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error('Error deleting assignment request:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // Get user's assignments
 app.get('/api/my-assignments', isAuthenticated, async (req, res) => {
     try {

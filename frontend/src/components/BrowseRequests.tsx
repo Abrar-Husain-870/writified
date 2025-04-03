@@ -29,9 +29,30 @@ const BrowseRequests: React.FC = () => {
     const [requests, setRequests] = useState<AssignmentRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [acceptingId, setAcceptingId] = useState<number | null>(null);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<number | null>(null);
 
     useEffect(() => {
+        // Fetch the current user's profile to get their ID
+        fetch(API.users.profile, {
+            credentials: 'include'
+        })
+        .then(res => {
+            if (res.ok) {
+                return res.json();
+            }
+            throw new Error('Failed to fetch user profile');
+        })
+        .then(data => {
+            setCurrentUserId(data.id);
+        })
+        .catch(err => {
+            console.error('Error fetching user profile:', err);
+        });
+
+        // Fetch assignment requests
         fetch(API.assignmentRequests.all, {
             credentials: 'include'
         })
@@ -132,6 +153,38 @@ const BrowseRequests: React.FC = () => {
         } finally {
             setAcceptingId(null);
         }
+    };
+
+    const handleDeleteRequest = async (requestId: number) => {
+        try {
+            setDeletingId(requestId);
+            const response = await fetch(API.assignmentRequests.delete(requestId), {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                // Remove the deleted request from the state
+                setRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
+                setShowDeleteConfirmation(null);
+            } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.error || 'Failed to delete request'}`);
+            }
+        } catch (error) {
+            console.error('Error deleting request:', error);
+            alert('Failed to delete request. Please try again.');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    // Check if the current user is the client who created the request
+    const isClientRequest = (request: AssignmentRequest) => {
+        return currentUserId === request.client.id;
     };
 
     return (
@@ -249,13 +302,22 @@ const BrowseRequests: React.FC = () => {
                                         </div>
                                         
                                         <div className="mt-6">
-                                            <button
-                                                onClick={() => handleAcceptRequest(request.id)}
-                                                disabled={acceptingId === request.id}
-                                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                                            >
-                                                {acceptingId === request.id ? 'Accepting...' : 'Accept Request'}
-                                            </button>
+                                            {isClientRequest(request) && request.status === 'open' ? (
+                                                <button
+                                                    onClick={() => setShowDeleteConfirmation(request.id)}
+                                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                >
+                                                    Delete Request
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleAcceptRequest(request.id)}
+                                                    disabled={acceptingId === request.id}
+                                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                                >
+                                                    {acceptingId === request.id ? 'Accepting...' : 'Accept Request'}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -264,6 +326,33 @@ const BrowseRequests: React.FC = () => {
                     </div>
                 )}
             </main>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirmation && (
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center z-50">
+                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h3>
+                        <p className="text-gray-600 mb-6">
+                            Are you sure you want to delete this assignment request? This action cannot be undone.
+                        </p>
+                        <div className="flex space-x-4">
+                            <button
+                                onClick={() => setShowDeleteConfirmation(null)}
+                                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => showDeleteConfirmation && handleDeleteRequest(showDeleteConfirmation)}
+                                disabled={deletingId !== null}
+                                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                            >
+                                {deletingId !== null ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
