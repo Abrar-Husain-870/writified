@@ -1115,7 +1115,14 @@ app.get('/api/test', (req, res) => {
 // Delete user account
 app.delete('/api/delete-account', isAuthenticated, async (req, res) => {
     try {
+        // Check if user is authenticated
+        if (!req.user || !req.user.id) {
+            console.error('User not authenticated or missing ID');
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
         const userId = req.user.id;
+        console.log(`Starting account deletion process for user ID: ${userId}`);
         
         // Begin transaction
         const client = await pool.connect();
@@ -1127,34 +1134,67 @@ app.delete('/api/delete-account', isAuthenticated, async (req, res) => {
             // Delete all related data in the correct order to maintain referential integrity
             
             // 1. Delete ratings given by this user
+            console.log('Deleting ratings given by user');
             await client.query('DELETE FROM ratings WHERE rater_id = $1', [userId]);
             
             // 2. Delete ratings received by this user
+            console.log('Deleting ratings received by user');
             await client.query('DELETE FROM ratings WHERE rated_id = $1', [userId]);
             
-            // 3. Delete writer portfolio
-            await client.query('DELETE FROM writer_portfolios WHERE user_id = $1', [userId]);
+            // 3. Check for writer portfolio table and column name
+            console.log('Checking writer portfolio table structure');
+            const tableInfo = await client.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'writer_portfolios'
+            `);
+            
+            // Find the correct column name that might refer to the user
+            const possibleUserColumns = ['user_id', 'writer_id', 'id'];
+            let userColumn = null;
+            
+            if (tableInfo.rows.length > 0) {
+                for (const col of possibleUserColumns) {
+                    if (tableInfo.rows.some(row => row.column_name === col)) {
+                        userColumn = col;
+                        break;
+                    }
+                }
+                
+                if (userColumn) {
+                    console.log(`Deleting writer portfolio using column: ${userColumn}`);
+                    await client.query(`DELETE FROM writer_portfolios WHERE ${userColumn} = $1`, [userId]);
+                } else {
+                    console.log('Could not find appropriate user column in writer_portfolios table');
+                }
+            } else {
+                console.log('Writer portfolios table does not exist or is empty');
+            }
             
             // 4. Delete assignment requests created by this user
+            console.log('Deleting assignment requests created by user');
             await client.query('DELETE FROM assignment_requests WHERE client_id = $1', [userId]);
             
             // 5. Delete assignment requests accepted by this user
+            console.log('Deleting assignment requests accepted by user');
             await client.query('DELETE FROM assignment_requests WHERE writer_id = $1', [userId]);
             
             // 6. Finally, delete the user
+            console.log('Deleting user account');
             await client.query('DELETE FROM users WHERE id = $1', [userId]);
             
             // Commit transaction
             await client.query('COMMIT');
+            console.log('Transaction committed successfully');
             
             // Destroy the session
-            req.logout((err) => {
+            req.logout(function(err) {
                 if (err) {
                     console.error('Error during logout:', err);
                     return res.status(500).json({ error: 'Error during logout' });
                 }
                 
-                req.session.destroy((err) => {
+                req.session.destroy(function(err) {
                     if (err) {
                         console.error('Error destroying session:', err);
                         return res.status(500).json({ error: 'Error destroying session' });
@@ -1167,13 +1207,14 @@ app.delete('/api/delete-account', isAuthenticated, async (req, res) => {
         } catch (error) {
             // Rollback transaction on error
             await client.query('ROLLBACK');
+            console.error('Database error during account deletion:', error);
             throw error;
         } finally {
             client.release();
         }
     } catch (error) {
         console.error('Error deleting account:', error);
-        res.status(500).json({ error: 'Failed to delete account' });
+        res.status(500).json({ error: 'Failed to delete account', details: error.message });
     }
 });
 
