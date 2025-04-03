@@ -117,8 +117,8 @@ if (process.env.NODE_ENV === 'production') {
 
 // Define allowed origins based on environment
 const allowedOrigins = process.env.FRONTEND_URL 
-    ? [process.env.FRONTEND_URL, 'http://localhost:3000']
-    : ['https://writified.vercel.app', 'http://localhost:3000'];
+    ? [process.env.FRONTEND_URL, 'https://writify-nine.vercel.app', 'http://localhost:3000']
+    : ['https://writified.vercel.app', 'https://writify-nine.vercel.app', 'http://localhost:3000'];
 
 // Middleware setup
 app.use(cors({
