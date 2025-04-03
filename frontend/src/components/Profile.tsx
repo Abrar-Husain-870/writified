@@ -209,8 +209,8 @@ const Profile: React.FC = () => {
                 return;
             }
 
-            // Account deleted successfully, redirect to login page
-            navigate('/login');
+            // Account deleted successfully, redirect to account deleted page
+            navigate('/account-deleted');
         } catch (error) {
             console.error('Error deleting account:', error);
             setDeleteError('Failed to delete account. Please try again later.');

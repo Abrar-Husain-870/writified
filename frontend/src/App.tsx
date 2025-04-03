@@ -10,6 +10,7 @@ import Profile from './components/Profile';
 import MyAssignments from './components/MyAssignments';
 import MyRatings from './components/MyRatings';
 import Tutorial from './components/Tutorial';
+import AccountDeleted from './components/AccountDeleted';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { API } from './utils/api';
 
@@ -77,6 +78,7 @@ function App() {
             <Route path="/my-assignments" element={isAuthenticated ? <MyAssignments /> : <Navigate to="/login" replace />} />
             <Route path="/my-ratings" element={isAuthenticated ? <MyRatings /> : <Navigate to="/login" replace />} />
             <Route path="/tutorial" element={isAuthenticated ? <Tutorial /> : <Navigate to="/login" replace />} />
+            <Route path="/account-deleted" element={<AccountDeleted />} />
             <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
             <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
           </Routes>
