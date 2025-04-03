@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import DarkModeToggle from './DarkModeToggle';
+import { API } from '../utils/api';
 
 interface HeaderProps {
     title: string;
@@ -14,7 +15,7 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
         // Create a form element
         const form = document.createElement('form');
         form.method = 'GET';
-        form.action = 'https://writify-app.onrender.com/auth/logout';
+        form.action = `${API.baseUrl}/auth/logout`;
         
         // Append the form to the body and submit it
         document.body.appendChild(form);

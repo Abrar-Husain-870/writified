@@ -1,7 +1,7 @@
 // API configuration
 const isProduction = window.location.hostname !== 'localhost';
 const API_URL = isProduction
-  ? 'https://writify-app.onrender.com'
+  ? (process.env.REACT_APP_API_URL || 'https://writified-backend.onrender.com')
   : (process.env.REACT_APP_API_URL || 'http://localhost:5000');
 
 // Common fetch options with credentials

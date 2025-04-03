@@ -149,9 +149,10 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Add this before your passport strategy
-const GOOGLE_CALLBACK_URL = process.env.NODE_ENV === 'production'
-    ? 'https://writified-backend.onrender.com/auth/google/callback'
-    : 'http://localhost:5000/auth/google/callback';
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 
+    (process.env.NODE_ENV === 'production'
+        ? 'https://writified-backend.onrender.com/auth/google/callback'
+        : 'http://localhost:5000/auth/google/callback');
 
 // Function to validate university email
 const isValidUniversityEmail = (email) => {
