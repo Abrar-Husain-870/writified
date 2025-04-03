@@ -249,9 +249,10 @@ app.get('/auth/google/callback', authCors,
             console.log('Auth callback received:', { err, user, info });
             
             // Define the frontend URL based on environment
-            const frontendURL = process.env.NODE_ENV === 'production'
-                ? 'https://writified.vercel.app'
-                : 'http://localhost:3000';
+            const frontendURL = process.env.FRONTEND_URL || 
+                (process.env.NODE_ENV === 'production'
+                    ? 'https://writified.vercel.app'
+                    : 'http://localhost:3000');
             
             if (err) {
                 console.error('Authentication error:', err);
@@ -279,9 +280,10 @@ app.get('/auth/logout', authCors, (req, res) => {
     console.log('Logging out user:', req.user?.id);
     
     // Define the frontend URL based on environment
-    const frontendURL = process.env.NODE_ENV === 'production'
-        ? 'https://writified.vercel.app'
-        : 'http://localhost:3000';
+    const frontendURL = process.env.FRONTEND_URL || 
+        (process.env.NODE_ENV === 'production'
+            ? 'https://writified.vercel.app'
+            : 'http://localhost:3000');
     
     // Simple approach that works with any Passport.js version
     req.logout(function(err) {
