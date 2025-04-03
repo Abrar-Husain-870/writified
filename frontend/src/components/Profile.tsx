@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header'; // Assuming the Header component is in the same directory
+import { API } from '../utils/api'; // Correct import path for the API utility
 
 interface User {
     id: number;
@@ -31,10 +32,20 @@ const Profile: React.FC = () => {
 
     useEffect(() => {
         // Fetch user profile
-        fetch('https://writify-app.onrender.com/api/profile', {
-            credentials: 'include'
+        fetch(API.users.profile, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`Failed to fetch profile: ${res.status}`);
+            }
+            return res.json();
+        })
         .then(data => {
             setUser(data);
             if (data.portfolio) {
@@ -65,10 +76,11 @@ const Profile: React.FC = () => {
                 whatsapp_number: user?.whatsapp_number || ''
             });
             
-            const response = await fetch('https://writify-app.onrender.com/api/profile/writer', {
+            const response = await fetch(API.users.updateWriterProfile, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -128,10 +140,11 @@ const Profile: React.FC = () => {
         }
         
         try {
-            const response = await fetch('https://writify-app.onrender.com/api/profile/portfolio', {
+            const response = await fetch(API.users.updatePortfolio, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 credentials: 'include',
                 body: JSON.stringify({

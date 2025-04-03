@@ -41,6 +41,8 @@ export const API = {
     profile: `${API_URL}/api/users/profile`,
     updateProfile: `${API_URL}/api/users/profile`,
     updateWhatsApp: `${API_URL}/api/users/update-whatsapp`,
+    updateWriterProfile: `${API_URL}/api/profile/writer`,
+    updatePortfolio: `${API_URL}/api/profile/portfolio`,
   },
   
   // Writer endpoints
