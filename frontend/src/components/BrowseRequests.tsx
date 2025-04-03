@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
+import { API } from '../utils/api';
 
 interface Client {
     id: number;
@@ -31,7 +32,7 @@ const BrowseRequests: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('https://writify-app.onrender.com/api/assignment-requests', {
+        fetch(API.assignmentRequests.all, {
             credentials: 'include'
         })
         .then(res => {
@@ -97,9 +98,12 @@ const BrowseRequests: React.FC = () => {
     const handleAcceptRequest = async (requestId: number) => {
         try {
             setAcceptingId(requestId);
-            const response = await fetch(`https://writify-app.onrender.com/api/assignment-requests/${requestId}/accept`, {
+            const response = await fetch(API.assignmentRequests.accept(requestId), {
                 method: 'POST',
-                credentials: 'include'
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
 
             if (response.ok) {

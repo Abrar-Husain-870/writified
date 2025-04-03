@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import RatingModal from './RatingModal';
+import { API } from '../utils/api';
 
 interface User {
   id: number;
@@ -47,7 +48,7 @@ const MyAssignments: React.FC = () => {
     const fetchAssignments = async () => {
       try {
         setLoading(true);
-        const response = await fetch('https://writify-app.onrender.com/api/my-assignments', {
+        const response = await fetch(API.assignments.my, {
           credentials: 'include',
           headers: {
             'Accept': 'application/json'
@@ -80,7 +81,7 @@ const MyAssignments: React.FC = () => {
 
   const handleCompleteAssignment = async (assignmentId: number) => {
     try {
-      const response = await fetch(`https://writify-app.onrender.com/api/assignments/${assignmentId}/complete`, {
+      const response = await fetch(`${API.baseUrl}/api/assignments/${assignmentId}/complete`, {
         method: 'PUT',
         credentials: 'include'
       });
@@ -170,7 +171,7 @@ const MyAssignments: React.FC = () => {
   const updateWhatsAppNumber = async () => {
     try {
       setUpdatingWhatsApp(true);
-      const response = await fetch('https://writify-app.onrender.com/api/update-whatsapp', {
+      const response = await fetch(`${API.baseUrl}/api/users/update-whatsapp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

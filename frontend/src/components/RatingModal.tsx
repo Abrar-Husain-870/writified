@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API } from '../utils/api';
 
 interface RatingModalProps {
   isOpen: boolean;
@@ -45,7 +46,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
         assignment_request_id: assignmentRequestId
       });
 
-      const response = await fetch('https://writify-app.onrender.com/api/ratings', {
+      const response = await fetch(API.ratings.submit, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

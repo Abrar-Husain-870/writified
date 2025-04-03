@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Header from './Header';
+import { API } from '../utils/api';
 
 interface Writer {
     id: number;
@@ -42,7 +43,7 @@ const WriterProfile: React.FC = () => {
     const [success, setSuccess] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch(`https://writify-app.onrender.com/api/writers/${id}`, {
+        fetch(API.writers.byId(Number(id)), {
             credentials: 'include'
         })
         .then(res => res.json())
@@ -109,13 +110,18 @@ const WriterProfile: React.FC = () => {
                 estimated_cost: parseFloat(formData.estimated_cost.toString())
             };
             
-            const response = await fetch('https://writify-app.onrender.com/api/assignment-requests', {
+            const requestData = {
+                writer_id: Number(id),
+                ...sanitizedData
+            };
+            
+            const response = await fetch(API.assignmentRequests.create, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 credentials: 'include',
-                body: JSON.stringify(sanitizedData)
+                body: JSON.stringify(requestData)
             });
 
             if (response.ok) {

@@ -1,5 +1,13 @@
 // API configuration
 const isProduction = window.location.hostname !== 'localhost';
+// Add type declaration for process.env
+declare const process: {
+  env: {
+    REACT_APP_API_URL?: string;
+    [key: string]: string | undefined;
+  }
+};
+
 const API_URL = isProduction
   ? (process.env.REACT_APP_API_URL || 'https://writified-backend.onrender.com')
   : (process.env.REACT_APP_API_URL || 'http://localhost:5000');
@@ -32,6 +40,7 @@ export const API = {
   users: {
     profile: `${API_URL}/api/users/profile`,
     updateProfile: `${API_URL}/api/users/profile`,
+    updateWhatsApp: `${API_URL}/api/users/update-whatsapp`,
   },
   
   // Writer endpoints
@@ -52,9 +61,16 @@ export const API = {
   // Assignment endpoints
   assignments: {
     all: `${API_URL}/api/assignments`,
+    my: `${API_URL}/api/my-assignments`,
     byId: (id: number) => `${API_URL}/api/assignments/${id}`,
     submit: (id: number) => `${API_URL}/api/assignments/${id}/submit`,
     approve: (id: number) => `${API_URL}/api/assignments/${id}/approve`,
+  },
+  
+  // Rating endpoints
+  ratings: {
+    submit: `${API_URL}/api/ratings`,
+    byUserId: (id: number) => `${API_URL}/api/ratings/user/${id}`,
   },
 };
 
