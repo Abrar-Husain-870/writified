@@ -1141,45 +1141,23 @@ app.delete('/api/delete-account', isAuthenticated, async (req, res) => {
             console.log('Deleting ratings received by user');
             await client.query('DELETE FROM ratings WHERE rated_id = $1', [userId]);
             
-            // 3. Check for writer portfolio table and column name
-            console.log('Checking writer portfolio table structure');
-            const tableInfo = await client.query(`
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'writer_portfolios'
-            `);
+            // 3. Delete writer portfolio if exists
+            console.log('Deleting writer portfolio');
+            await client.query('DELETE FROM writer_portfolios WHERE writer_id = $1', [userId]);
             
-            // Find the correct column name that might refer to the user
-            const possibleUserColumns = ['user_id', 'writer_id', 'id'];
-            let userColumn = null;
+            // 4. Delete assignments where user is the writer
+            console.log('Deleting assignments where user is the writer');
+            await client.query('DELETE FROM assignments WHERE writer_id = $1', [userId]);
             
-            if (tableInfo.rows.length > 0) {
-                for (const col of possibleUserColumns) {
-                    if (tableInfo.rows.some(row => row.column_name === col)) {
-                        userColumn = col;
-                        break;
-                    }
-                }
-                
-                if (userColumn) {
-                    console.log(`Deleting writer portfolio using column: ${userColumn}`);
-                    await client.query(`DELETE FROM writer_portfolios WHERE ${userColumn} = $1`, [userId]);
-                } else {
-                    console.log('Could not find appropriate user column in writer_portfolios table');
-                }
-            } else {
-                console.log('Writer portfolios table does not exist or is empty');
-            }
+            // 5. Delete assignments where user is the client
+            console.log('Deleting assignments where user is the client');
+            await client.query('DELETE FROM assignments WHERE client_id = $1', [userId]);
             
-            // 4. Delete assignment requests created by this user
+            // 6. Delete assignment requests created by this user
             console.log('Deleting assignment requests created by user');
             await client.query('DELETE FROM assignment_requests WHERE client_id = $1', [userId]);
             
-            // 5. Delete assignment requests accepted by this user
-            console.log('Deleting assignment requests accepted by user');
-            await client.query('DELETE FROM assignment_requests WHERE writer_id = $1', [userId]);
-            
-            // 6. Finally, delete the user
+            // 7. Finally, delete the user
             console.log('Deleting user account');
             await client.query('DELETE FROM users WHERE id = $1', [userId]);
             
