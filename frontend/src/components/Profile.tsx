@@ -21,6 +21,8 @@ interface Portfolio {
 }
 
 const Profile: React.FC = () => {
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
     const [portfolio, setPortfolio] = useState<Portfolio>({
@@ -180,6 +182,38 @@ const Profile: React.FC = () => {
         } catch (error) {
             console.error('Error updating portfolio:', error);
             setMessage({ type: 'error', text: 'Failed to update portfolio' });
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        try {
+            setDeleteError(null);
+            const response = await fetch(API.users.deleteAccount, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error deleting account:', errorText);
+                try {
+                    const error = JSON.parse(errorText);
+                    setDeleteError(error.error || 'Failed to delete account');
+                } catch (e) {
+                    setDeleteError('Failed to delete account');
+                }
+                return;
+            }
+
+            // Account deleted successfully, redirect to login page
+            navigate('/login');
+        } catch (error) {
+            console.error('Error deleting account:', error);
+            setDeleteError('Failed to delete account. Please try again later.');
         }
     };
 
@@ -375,6 +409,48 @@ const Profile: React.FC = () => {
                     </div>
                 </div>
             </main>
+            <div className="flex justify-center mt-6">
+                <div className="max-w-md w-full">
+                    <div className="p-4 bg-blue-50 rounded-md mb-4">
+                        <p className="text-blue-700">
+                            Getting unwanted assignment requests? Try switching your writing status to "Inactive".
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setShowDeleteConfirmation(true)}
+                        className="w-full px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    >
+                        Delete Account
+                    </button>
+                </div>
+            </div>
+            {showDeleteConfirmation && (
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center">
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Account Deletion</h3>
+                        <p className="text-gray-600 mb-6">Are you sure you want to delete your account? This action is irreversible.</p>
+                        {deleteError && (
+                            <div className="mb-6 p-4 rounded-md bg-red-100 text-red-700">
+                                {deleteError}
+                            </div>
+                        )}
+                        <div className="flex space-x-4">
+                            <button
+                                onClick={() => setShowDeleteConfirmation(false)}
+                                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteAccount}
+                                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            >
+                                Delete Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

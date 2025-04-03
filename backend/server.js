@@ -1112,6 +1112,71 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'Backend server is working correctly' });
 });
 
+// Delete user account
+app.delete('/api/delete-account', isAuthenticated, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        // Begin transaction
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            console.log(`Deleting account for user ID: ${userId}`);
+            
+            // Delete all related data in the correct order to maintain referential integrity
+            
+            // 1. Delete ratings given by this user
+            await client.query('DELETE FROM ratings WHERE rater_id = $1', [userId]);
+            
+            // 2. Delete ratings received by this user
+            await client.query('DELETE FROM ratings WHERE rated_id = $1', [userId]);
+            
+            // 3. Delete writer portfolio
+            await client.query('DELETE FROM writer_portfolios WHERE user_id = $1', [userId]);
+            
+            // 4. Delete assignment requests created by this user
+            await client.query('DELETE FROM assignment_requests WHERE client_id = $1', [userId]);
+            
+            // 5. Delete assignment requests accepted by this user
+            await client.query('DELETE FROM assignment_requests WHERE writer_id = $1', [userId]);
+            
+            // 6. Finally, delete the user
+            await client.query('DELETE FROM users WHERE id = $1', [userId]);
+            
+            // Commit transaction
+            await client.query('COMMIT');
+            
+            // Destroy the session
+            req.logout((err) => {
+                if (err) {
+                    console.error('Error during logout:', err);
+                    return res.status(500).json({ error: 'Error during logout' });
+                }
+                
+                req.session.destroy((err) => {
+                    if (err) {
+                        console.error('Error destroying session:', err);
+                        return res.status(500).json({ error: 'Error destroying session' });
+                    }
+                    
+                    res.clearCookie('connect.sid');
+                    res.status(200).json({ message: 'Account deleted successfully' });
+                });
+            });
+        } catch (error) {
+            // Rollback transaction on error
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        res.status(500).json({ error: 'Failed to delete account' });
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);

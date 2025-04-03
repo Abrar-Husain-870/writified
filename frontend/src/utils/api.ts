@@ -44,6 +44,7 @@ export const API = {
     updateWriterProfile: `${API_URL}/api/profile/writer`,
     updatePortfolio: `${API_URL}/api/profile/portfolio`,
     ratings: `${API_URL}/api/my-ratings`,
+    deleteAccount: `${API_URL}/api/delete-account`,
   },
   
   // Writer endpoints
