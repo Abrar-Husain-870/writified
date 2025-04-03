@@ -202,6 +202,23 @@ const Tutorial: React.FC = () => {
                                 </div>
                             </section>
                             
+                            {/* Contact Information */}
+                            <section>
+                                <h2 className="text-2xl font-semibold text-gray-800 mb-3">Contact Information</h2>
+                                <p className="text-gray-600 mb-4">
+                                    If you have any questions, feedback, or need assistance with the Writify application, please don't hesitate to reach out:
+                                </p>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <h3 className="text-xl font-medium text-blue-800 mb-2">Contact the Developer</h3>
+                                    <p className="text-gray-700 mb-2">
+                                        Email: <a href="mailto:brainstormhusain@gmail.com" className="text-blue-600 hover:underline">brainstormhusain@gmail.com</a>
+                                    </p>
+                                    <p className="text-gray-600 text-sm">
+                                        I'm committed to improving Writify and providing the best experience possible. Your feedback is valuable and helps make the platform better for everyone.
+                                    </p>
+                                </div>
+                            </section>
+                            
                             {/* Tips for Success */}
                             <section>
                                 <h2 className="text-2xl font-semibold text-gray-800 mb-3">Tips for Success</h2>

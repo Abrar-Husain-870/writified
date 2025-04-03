@@ -45,7 +45,12 @@ const FindWriter: React.FC = () => {
         fetch(API.writers.all, {
             credentials: 'include'
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP error! Status: ${res.status}`);
+            }
+            return res.json();
+        })
         .then(data => {
             // Filter out inactive writers
             const activeWriters = data.filter((writer: Writer) => 
@@ -57,6 +62,7 @@ const FindWriter: React.FC = () => {
         .catch(err => {
             console.error('Error fetching writers:', err);
             setLoading(false);
+            setError('Failed to load writers. Please try again later.');
         });
     }, []);
 
