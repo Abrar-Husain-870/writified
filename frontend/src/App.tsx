@@ -26,12 +26,22 @@ function App() {
         const response = await fetch(API.auth.status, {
           method: 'GET',
           credentials: 'include',
+          // Add headers to prevent CORS preflight issues
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
         });
+        
+        if (!response.ok) {
+          throw new Error(`Auth check failed with status: ${response.status}`);
+        }
         
         const data = await response.json();
         setIsAuthenticated(data.isAuthenticated);
       } catch (error) {
         console.error('Auth check failed:', error);
+        // If authentication check fails, assume user is not authenticated
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
