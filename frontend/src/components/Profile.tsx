@@ -42,7 +42,18 @@ const Profile: React.FC = () => {
         })
         .then(res => {
             if (!res.ok) {
-                throw new Error(`Failed to fetch profile: ${res.status}`);
+                // Log the error response for debugging
+                console.error(`Profile fetch failed with status: ${res.status}`);
+                return res.text().then(text => {
+                    try {
+                        // Try to parse as JSON
+                        const errorData = JSON.parse(text);
+                        throw new Error(errorData.error || `Failed to fetch profile: ${res.status}`);
+                    } catch (e) {
+                        // If parsing fails, use the raw text or status
+                        throw new Error(`Failed to fetch profile: ${text || res.status}`);
+                    }
+                });
             }
             return res.json();
         })
@@ -55,6 +66,7 @@ const Profile: React.FC = () => {
         })
         .catch(err => {
             console.error('Error fetching profile:', err);
+            setMessage({ type: 'error', text: err.message || 'Failed to load profile' });
             setLoading(false);
         });
     }, []);

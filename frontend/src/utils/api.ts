@@ -38,9 +38,9 @@ export const API = {
   
   // User endpoints
   users: {
-    profile: `${API_URL}/api/users/profile`,
-    updateProfile: `${API_URL}/api/users/profile`,
-    updateWhatsApp: `${API_URL}/api/users/update-whatsapp`,
+    profile: `${API_URL}/api/profile`,
+    updateProfile: `${API_URL}/api/profile`,
+    updateWhatsApp: `${API_URL}/api/update-whatsapp`,
     updateWriterProfile: `${API_URL}/api/profile/writer`,
     updatePortfolio: `${API_URL}/api/profile/portfolio`,
   },
