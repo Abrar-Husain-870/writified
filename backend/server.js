@@ -6,6 +6,15 @@ const session = require('express-session');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 require('dotenv').config();
 const cron = require('node-cron');
+const { setupDatabase } = require('./db/setupDatabase');
+
+// Initialize database on startup in production
+if (process.env.NODE_ENV === 'production') {
+    console.log('Initializing database...');
+    setupDatabase()
+        .then(() => console.log('Database initialization complete'))
+        .catch(err => console.error('Database initialization failed:', err));
+}
 
 const app = express();
 
