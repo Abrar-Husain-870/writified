@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
+import { API } from '../utils/api';
 
 interface Rating {
   id: number;
@@ -27,10 +28,11 @@ const MyRatings: React.FC = () => {
     const fetchRatings = async () => {
       try {
         setLoading(true);
-        const response = await fetch('https://writify-app.onrender.com/api/my-ratings', {
+        const response = await fetch(API.users.ratings, {
           credentials: 'include',
           headers: {
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           }
         });
         
@@ -40,7 +42,16 @@ const MyRatings: React.FC = () => {
             navigate('/login');
             return;
           }
-          throw new Error(`HTTP error! status: ${response.status}`);
+          
+          // Try to get more detailed error information
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
+          try {
+            const errorData = JSON.parse(errorText);
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+          } catch (e) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
         }
         
         const data = await response.json();
