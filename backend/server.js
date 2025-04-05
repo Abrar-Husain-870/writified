@@ -70,6 +70,28 @@ const pool = new Pool({
     }
 });
 
+// Create a proxy around the database pool to prevent DELETE operations during logout
+const originalQuery = pool.query;
+pool.query = function(text, params) {
+    // Check if this is a DELETE operation and logout is in progress
+    if (isLogoutInProgress && text.toUpperCase().includes('DELETE FROM')) {
+        console.error('CRITICAL PROTECTION: Blocked DELETE operation during logout process');
+        console.error('Attempted query:', text);
+        
+        // Return a mock result instead of executing the query
+        return Promise.resolve({
+            rows: [],
+            rowCount: 0,
+            command: 'SELECT', // Pretend it was a SELECT
+            oid: null,
+            fields: []
+        });
+    }
+    
+    // Otherwise, proceed with the original query
+    return originalQuery.apply(this, arguments);
+};
+
 // Function to clean up old user data (older than 6 months)
 // DISABLED: This function was deleting user data unexpectedly
 const cleanupOldUserData = async () => {
@@ -333,37 +355,6 @@ app.get('/auth/google/callback', authCors,
         })(req, res, next);
     }
 );
-
-// Logout route
-app.get('/auth/logout', authCors, (req, res) => {
-    console.log('Logging out user:', req.user?.id);
-    
-    // Define the frontend URL based on environment
-    const frontendURL = process.env.FRONTEND_URL || 
-        (process.env.NODE_ENV === 'production'
-            ? 'https://writified.vercel.app'
-            : 'http://localhost:3000');
-    
-    // Simple approach that works with any Passport.js version
-    req.logout(function(err) {
-        if (err) {
-            console.error('Logout error:', err);
-            return res.status(500).json({ error: 'Failed to logout' });
-        }
-        
-        // Instead of clearing the cookie completely, just end the current session
-        // This ensures user data persists in the database
-        req.session.destroy(function(sessionErr) {
-            if (sessionErr) {
-                console.error('Session destruction error:', sessionErr);
-                return res.status(500).json({ error: 'Failed to end session' });
-            }
-            
-            // Redirect to login page without clearing the cookie
-            res.redirect(`${frontendURL}/login`);
-        });
-    });
-});
 
 // Auth status endpoint
 app.get('/auth/status', authCors, (req, res) => {
@@ -1348,6 +1339,77 @@ app.use((req, res) => {
     res.status(404).json({ 
         error: 'Not Found',
         message: 'The requested resource was not found' 
+    });
+});
+
+// Add a global flag to track logout operations
+let isLogoutInProgress = false;
+
+// Middleware to prevent database operations during logout
+const preventDbOperationsDuringLogout = (req, res, next) => {
+    // If a logout is in progress and this is a database operation endpoint
+    if (isLogoutInProgress && req.originalUrl.includes('/api/delete-account')) {
+        console.error('CRITICAL: Prevented database operation during logout process');
+        return res.status(503).json({ error: 'Service temporarily unavailable during logout process' });
+    }
+    next();
+};
+
+// Apply this middleware to all routes
+app.use(preventDbOperationsDuringLogout);
+
+// Logout route
+app.get('/auth/logout', authCors, (req, res) => {
+    console.log('Logging out user:', req.user?.id);
+    
+    // Set the global flag to prevent database operations during logout
+    isLogoutInProgress = true;
+    
+    // Define the frontend URL based on environment
+    const frontendURL = process.env.FRONTEND_URL || 
+        (process.env.NODE_ENV === 'production'
+            ? 'https://writified.vercel.app'
+            : 'http://localhost:3000');
+    
+    // Store the user ID before logout
+    const userId = req.user?.id;
+    
+    // Simple approach that works with any Passport.js version
+    req.logout(function(err) {
+        if (err) {
+            console.error('Logout error:', err);
+            // Reset the flag even if there's an error
+            isLogoutInProgress = false;
+            return res.status(500).json({ error: 'Failed to logout' });
+        }
+        
+        // CRITICAL FIX: Don't destroy the session, just mark it as logged out
+        // This prevents any potential cascading effects that might trigger data deletion
+        if (req.session) {
+            req.session.isLoggedOut = true;
+            req.session.save(function(saveErr) {
+                if (saveErr) {
+                    console.error('Session save error:', saveErr);
+                }
+                
+                // Log the successful logout
+                console.log(`User ${userId} logged out successfully without session destruction`);
+                
+                // Reset the flag after successful logout
+                isLogoutInProgress = false;
+                
+                // Redirect to login page
+                res.redirect(`${frontendURL}/login`);
+            });
+        } else {
+            // Redirect to login page if session doesn't exist
+            console.log(`User ${userId} logged out (no session found)`);
+            
+            // Reset the flag
+            isLogoutInProgress = false;
+            
+            res.redirect(`${frontendURL}/login`);
+        }
     });
 });
 

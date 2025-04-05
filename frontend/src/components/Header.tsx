@@ -11,15 +11,30 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
 
-    const handleSignOut = () => {
-        // Create a form element
-        const form = document.createElement('form');
-        form.method = 'GET';
-        form.action = `${API.baseUrl}/auth/logout`;
-        
-        // Append the form to the body and submit it
-        document.body.appendChild(form);
-        form.submit();
+    const handleSignOut = async () => {
+        try {
+            // Use fetch with credentials instead of form submission
+            const response = await fetch(`${API.baseUrl}/auth/logout`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                // Redirect to login page after successful logout
+                window.location.href = '/login';
+            } else {
+                console.error('Logout failed:', await response.text());
+                // Still redirect to login page even if logout fails
+                window.location.href = '/login';
+            }
+        } catch (error) {
+            console.error('Error during logout:', error);
+            // Redirect to login page even if there's an error
+            window.location.href = '/login';
+        }
     };
 
     return (
