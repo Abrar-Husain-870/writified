@@ -10,6 +10,7 @@ const { setupDatabase } = require('./db/setupDatabase');
 const crypto = require('crypto');
 
 // Encryption utilities for sensitive data
+// Use environment variable for encryption key with a fallback
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-min-32-chars'; // Must be 256 bits (32 characters)
 const IV_LENGTH = 16; // For AES, this is always 16
 
