@@ -297,11 +297,17 @@ app.get('/auth/logout', authCors, (req, res) => {
             return res.status(500).json({ error: 'Failed to logout' });
         }
         
-        // Clear the session cookie
-        res.clearCookie('connect.sid');
-        
-        // Redirect to login page
-        res.redirect(`${frontendURL}/login`);
+        // Instead of clearing the cookie completely, just end the current session
+        // This ensures user data persists in the database
+        req.session.destroy(function(sessionErr) {
+            if (sessionErr) {
+                console.error('Session destruction error:', sessionErr);
+                return res.status(500).json({ error: 'Failed to end session' });
+            }
+            
+            // Redirect to login page without clearing the cookie
+            res.redirect(`${frontendURL}/login`);
+        });
     });
 });
 
