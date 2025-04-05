@@ -128,7 +128,60 @@ const MyAssignments: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // If dateString is null or undefined, use current date as fallback
+    // This ensures we don't show "N/A" or "Jan 1, 1970" for assignments that exist but don't have a date
+    if (!dateString) {
+      // For created_at dates that are missing, use a recent date instead of showing N/A
+      return new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+    
+    // Try to parse the date
+    const date = new Date(dateString);
+    
+    // Check if the date is valid (not Jan 1, 1970 or Invalid Date)
+    if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+      // Try different date formats
+      
+      // Try parsing ISO format without timezone
+      if (dateString.includes('T')) {
+        const isoDate = new Date(dateString.split('T')[0]);
+        if (!isNaN(isoDate.getTime())) {
+          return isoDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+        }
+      }
+      
+      // Try parsing numeric timestamp
+      if (!isNaN(Number(dateString))) {
+        const milliseconds = parseInt(dateString);
+        const timestampDate = new Date(milliseconds);
+        
+        if (!isNaN(timestampDate.getTime())) {
+          return timestampDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+        }
+      }
+      
+      // If all parsing attempts fail, use current date as fallback
+      return new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+    
+    // If date is valid, format it
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
