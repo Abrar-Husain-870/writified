@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import RatingModal from './RatingModal';
@@ -127,7 +127,7 @@ const MyAssignments: React.FC = () => {
     );
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
     // If dateString is null or undefined, use current date as fallback
     // This ensures we don't show "N/A" or "Jan 1, 1970" for assignments that exist but don't have a date
     if (!dateString) {
