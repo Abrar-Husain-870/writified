@@ -1252,6 +1252,13 @@ app.delete('/api/delete-account', isAuthenticated, async (req, res) => {
             return res.status(401).json({ error: 'User not authenticated' });
         }
         
+        // IMPORTANT: Add confirmation check to prevent accidental deletion
+        const { confirmDelete } = req.body;
+        if (!confirmDelete || confirmDelete !== 'DELETE_MY_ACCOUNT_PERMANENTLY') {
+            console.error('Account deletion attempted without proper confirmation');
+            return res.status(400).json({ error: 'Proper confirmation required to delete account' });
+        }
+        
         const userId = req.user.id;
         console.log(`Starting account deletion process for user ID: ${userId}`);
         
@@ -1305,7 +1312,7 @@ app.delete('/api/delete-account', isAuthenticated, async (req, res) => {
                 
                 req.session.destroy(function(err) {
                     if (err) {
-                        console.error('Error destroying session:', err);
+                        console.error('Session destruction error:', err);
                         return res.status(500).json({ error: 'Error destroying session' });
                     }
                     

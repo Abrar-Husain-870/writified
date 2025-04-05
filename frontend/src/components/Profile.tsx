@@ -194,7 +194,10 @@ const Profile: React.FC = () => {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({
+                    confirmDelete: 'DELETE_MY_ACCOUNT_PERMANENTLY'
+                })
             });
 
             if (!response.ok) {
