@@ -71,7 +71,13 @@ const pool = new Pool({
 });
 
 // Function to clean up old user data (older than 6 months)
+// DISABLED: This function was deleting user data unexpectedly
 const cleanupOldUserData = async () => {
+    console.log('Data cleanup function is currently disabled to prevent data loss');
+    return;
+    
+    // Original implementation below - currently disabled
+    /*
     const client = await pool.connect();
     try {
         console.log('Running scheduled cleanup of old user data...');
@@ -146,19 +152,22 @@ const cleanupOldUserData = async () => {
     } finally {
         client.release();
     }
+    */
 };
 
-// Schedule cleanup to run at midnight every day
+// DISABLED: Schedule cleanup to run at midnight every day
 // This will check for users older than 6 months and delete their data
-cron.schedule('0 0 * * *', cleanupOldUserData);
+// cron.schedule('0 0 * * *', cleanupOldUserData);
 
-// Run cleanup on startup in production (optional)
+// DISABLED: Run cleanup on startup in production (optional)
+/*
 if (process.env.NODE_ENV === 'production') {
     // Wait 5 minutes after startup before running initial cleanup
     setTimeout(() => {
         cleanupOldUserData();
     }, 5 * 60 * 1000);
 }
+*/
 
 // Define allowed origins based on environment
 const allowedOrigins = process.env.FRONTEND_URL 
