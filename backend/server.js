@@ -7,6 +7,50 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 require('dotenv').config();
 const cron = require('node-cron');
 const { setupDatabase } = require('./db/setupDatabase');
+const crypto = require('crypto');
+
+// Encryption utilities for sensitive data
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-secret-encryption-key-min-32-chars'; // Must be 256 bits (32 characters)
+const IV_LENGTH = 16; // For AES, this is always 16
+
+// Encrypt sensitive data like phone numbers
+function encrypt(text) {
+    if (!text) return text;
+    try {
+        const iv = crypto.randomBytes(IV_LENGTH);
+        const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+        let encrypted = cipher.update(text);
+        encrypted = Buffer.concat([encrypted, cipher.final()]);
+        return iv.toString('hex') + ':' + encrypted.toString('hex');
+    } catch (error) {
+        console.error('Encryption error:', error);
+        return text; // Return original text if encryption fails
+    }
+}
+
+// Decrypt sensitive data
+function decrypt(text) {
+    if (!text || !text.includes(':')) return text;
+    try {
+        const textParts = text.split(':');
+        const iv = Buffer.from(textParts.shift(), 'hex');
+        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString();
+    } catch (error) {
+        console.error('Decryption error:', error);
+        return text; // Return original text if decryption fails
+    }
+}
+
+// Validate phone number format
+function validatePhoneNumber(phoneNumber) {
+    // Basic validation - can be enhanced based on your requirements
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
+    return phoneRegex.test(phoneNumber.replace(/\D/g, ''));
+}
 
 // Initialize database on startup in production
 if (process.env.NODE_ENV === 'production') {
@@ -867,6 +911,11 @@ app.get('/api/profile', isAuthenticated, async (req, res) => {
 
         const user = result.rows[0];
         
+        // Decrypt the WhatsApp number before sending it to the client
+        if (user.whatsapp_number) {
+            user.whatsapp_number = decrypt(user.whatsapp_number);
+        }
+        
         // Try to get portfolio data if it exists, but don't fail if the table doesn't exist
         try {
             const portfolioResult = await pool.query(`
@@ -898,7 +947,7 @@ app.put('/api/profile/writer', isAuthenticated, async (req, res) => {
     const { university_stream, whatsapp_number, writer_status } = req.body;
     
     try {
-        console.log('Updating writer profile with data:', { university_stream, whatsapp_number, writer_status });
+        console.log('Updating writer profile with data:', { university_stream, writer_status });
         console.log('User ID:', req.user.id);
         
         // Validate writer_status
@@ -907,6 +956,14 @@ app.put('/api/profile/writer', isAuthenticated, async (req, res) => {
             return res.status(400).json({ error: 'Invalid writer status' });
         }
         
+        // Validate phone number format if provided
+        if (whatsapp_number && !validatePhoneNumber(whatsapp_number)) {
+            return res.status(400).json({ error: 'Invalid phone number format. Please enter a valid phone number.' });
+        }
+        
+        // Encrypt the WhatsApp number before storing
+        const encryptedWhatsApp = whatsapp_number ? encrypt(whatsapp_number) : null;
+        
         const result = await pool.query(`
             UPDATE users 
             SET university_stream = $1,
@@ -914,15 +971,21 @@ app.put('/api/profile/writer', isAuthenticated, async (req, res) => {
                 writer_status = $3
             WHERE id = $4
             RETURNING *
-        `, [university_stream, whatsapp_number, writer_status, req.user.id]);
+        `, [university_stream, encryptedWhatsApp, writer_status, req.user.id]);
         
         if (result.rows.length === 0) {
             console.log('User not found for ID:', req.user.id);
             return res.status(404).json({ error: 'User not found' });
         }
         
-        console.log('Writer profile updated successfully:', result.rows[0]);
-        res.json(result.rows[0]);
+        // Decrypt the WhatsApp number before sending it back to the client
+        const user = result.rows[0];
+        if (user.whatsapp_number) {
+            user.whatsapp_number = decrypt(user.whatsapp_number);
+        }
+        
+        console.log('Writer profile updated successfully');
+        res.json(user);
     } catch (error) {
         console.error('Error updating writer profile:', error);
         res.status(500).json({ error: 'Server error: ' + error.message });
@@ -961,11 +1024,16 @@ app.post('/api/update-whatsapp', isAuthenticated, async (req, res) => {
             return res.status(400).json({ error: 'WhatsApp number is required' });
         }
         
+        // Validate phone number format
+        if (!validatePhoneNumber(whatsapp_number)) {
+            return res.status(400).json({ error: 'Invalid phone number format. Please enter a valid phone number.' });
+        }
+        
         console.log(`Updating WhatsApp number for user ${userId} to ${whatsapp_number}`);
         
         await pool.query(
             'UPDATE users SET whatsapp_number = $1 WHERE id = $2',
-            [whatsapp_number, userId]
+            [encrypt(whatsapp_number), userId]
         );
         
         res.json({ message: 'WhatsApp number updated successfully' });
