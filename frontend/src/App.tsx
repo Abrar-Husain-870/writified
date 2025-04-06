@@ -64,8 +64,9 @@ function App() {
 
         console.log(`Checking auth status with API (attempt ${retryCount + 1}):`, API.auth.status);
         
-        // Add cache-busting parameter to prevent cached responses
-        const authCheckUrl = `${API.auth.status}?t=${Date.now()}`;
+        // Don't use cache-busting parameter as it triggers CORS preflight
+        // Use the standard URL without modifications
+        const authCheckUrl = API.auth.status;
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
@@ -73,15 +74,8 @@ function App() {
         const response = await fetch(authCheckUrl, {
           method: 'GET',
           credentials: 'include',
-          signal: controller.signal,
-          cache: 'no-store', // Prevent caching
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
+          signal: controller.signal
+          // Don't add custom headers that might trigger CORS preflight
         });
         
         clearTimeout(timeoutId);

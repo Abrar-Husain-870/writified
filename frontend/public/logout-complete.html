@@ -38,13 +38,13 @@
                 console.log('Logout complete message sent to parent');
             } catch (e) {
                 console.error('Error sending logout message:', e);
-                // Fallback - redirect to login page if messaging fails
-                window.parent.location.href = '/login?t=' + Date.now();
+                // Fallback - redirect to login page without cache-busting parameter
+                window.parent.location.href = '/login';
             }
             
             // Fallback - redirect after a delay if nothing else happens
             setTimeout(function() {
-                window.parent.location.href = '/login?t=' + Date.now();
+                window.parent.location.href = '/login';
             }, 2000);
         };
     </script>
