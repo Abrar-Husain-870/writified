@@ -1358,6 +1358,13 @@ const preventDbOperationsDuringLogout = (req, res, next) => {
 // Apply this middleware to all routes
 app.use(preventDbOperationsDuringLogout);
 
+// API logout route that matches frontend configuration
+app.get('/api/auth/logout', authCors, (req, res) => {
+    // Redirect to the main logout handler
+    console.log('API logout route called, redirecting to main logout handler');
+    res.redirect('/auth/logout');
+});
+
 // Logout route
 app.get('/auth/logout', authCors, (req, res) => {
     console.log('Logging out user:', req.user?.id);

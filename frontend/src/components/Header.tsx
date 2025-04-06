@@ -11,30 +11,26 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
 
-    const handleSignOut = async () => {
-        try {
-            // Use fetch with credentials instead of form submission
-            const response = await fetch(`${API.baseUrl}/auth/logout`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                // Redirect to login page after successful logout
-                window.location.href = '/login';
-            } else {
-                console.error('Logout failed:', await response.text());
-                // Still redirect to login page even if logout fails
-                window.location.href = '/login';
-            }
-        } catch (error) {
-            console.error('Error during logout:', error);
-            // Redirect to login page even if there's an error
-            window.location.href = '/login';
-        }
+    const handleSignOut = () => {
+        // Simple and direct approach - just clear cookies and redirect
+        // This is a client-side only solution that doesn't rely on the backend
+        
+        // Clear localStorage items
+        localStorage.clear();
+        
+        // Clear sessionStorage items
+        sessionStorage.clear();
+        
+        // Attempt to expire all cookies
+        document.cookie.split(';').forEach(cookie => {
+            const [name] = cookie.trim().split('=');
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        });
+        
+        console.log('Logged out: Cleared all client-side storage');
+        
+        // Redirect to login page
+        window.location.href = '/login';
     };
 
     return (
