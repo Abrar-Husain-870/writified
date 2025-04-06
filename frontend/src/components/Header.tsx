@@ -12,25 +12,32 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
 
     const handleSignOut = () => {
-        // Simple and direct approach - just clear cookies and redirect
-        // This is a client-side only solution that doesn't rely on the backend
+        // Save the current theme preference before logout
+        const currentThemePreference = localStorage.getItem('darkMode');
         
-        // Clear localStorage items
-        localStorage.clear();
+        // Clear authentication-related localStorage items but preserve theme
+        const keysToKeep = ['darkMode'];
+        const keysToRemove = Object.keys(localStorage).filter(key => !keysToKeep.includes(key));
         
-        // Clear sessionStorage items
+        // Remove only authentication-related items
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        // Clear all sessionStorage items
         sessionStorage.clear();
         
-        // Attempt to expire all cookies
+        // Expire authentication cookies but be careful with domain/path
+        const cookiesToExpire = ['connect.sid', 'session', 'token', 'auth', 'user'];
         document.cookie.split(';').forEach(cookie => {
             const [name] = cookie.trim().split('=');
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+            if (cookiesToExpire.some(c => name.toLowerCase().includes(c.toLowerCase()))) {
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+            }
         });
         
-        console.log('Logged out: Cleared all client-side storage');
+        console.log('Logged out: Cleared authentication data while preserving theme settings');
         
-        // Redirect to login page
-        window.location.href = '/login';
+        // Redirect to login page with a clean URL (no hash or query params)
+        window.location.replace('/login');
     };
 
     return (
