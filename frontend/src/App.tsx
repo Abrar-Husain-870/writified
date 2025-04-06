@@ -15,6 +15,37 @@ import AccountDeleted from './components/AccountDeleted';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { API } from './utils/api';
 
+// Helper function to clear all cookies
+const clearAllCookies = () => {
+  document.cookie.split(';').forEach(cookie => {
+    const [name] = cookie.trim().split('=');
+    if (!name) return;
+    
+    // Clear with multiple domain/path combinations
+    const hostname = window.location.hostname;
+    const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
+    const domainParts = hostname.split('.');
+    const topDomain = domainParts.length > 1 ? 
+      domainParts.slice(domainParts.length - 2).join('.') : hostname;
+      
+    const domains = [hostname, hostnameWithoutWWW, topDomain, '', null];
+    const paths = ['/', '/api', '/auth', '/api/auth', '', null];
+    
+    domains.forEach(domain => {
+      paths.forEach(path => {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+          (path ? `; path=${path}` : '') + 
+          (domain ? `; domain=${domain}` : '');
+          
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+          (path ? `; path=${path}` : '') + 
+          (domain ? `; domain=${domain}` : '') + 
+          '; secure';
+      });
+    });
+  });
+};
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,6 +160,32 @@ function App() {
         
         const data = await response.json();
         console.log('Auth check response:', data);
+        
+        // Verify that the user has a valid university email if they are authenticated
+        if (data.isAuthenticated && data.user && data.user.email) {
+          const email = data.user.email;
+          console.log('Checking if email is a valid university email:', email);
+          
+          // Check if the email is from the university domain
+          const isValidUniversityEmail = email.endsWith('@student.iul.ac.in');
+          
+          if (!isValidUniversityEmail) {
+            console.log('Non-university email detected, forcing logout');
+            
+            // Set logout flags to prevent automatic login attempts
+            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            
+            // Clear all cookies to ensure we're logged out
+            clearAllCookies();
+            
+            setIsAuthenticated(false);
+            
+            // Redirect to login page with unauthorized error
+            window.location.href = '/login?error=unauthorized&force=true';
+            return;
+          }
+        }
         
         // If we're not authenticated according to the server, set logout flags
         if (!data.isAuthenticated) {
