@@ -10,51 +10,114 @@ const Login: React.FC<LoginProps> = () => {
     const location = useLocation();
 
     useEffect(() => {
-        // Clear ALL logout flags when the login page loads
-        // This ensures users can log in after a previous logout
-        localStorage.removeItem('FORCE_LOGOUT');
-        sessionStorage.removeItem('FORCE_LOGOUT');
-        localStorage.removeItem('user_logged_out');
-        sessionStorage.removeItem('manual_logout');
+        console.log('Login page loaded, checking URL parameters');
         
         // Check for error in URL params
         const params = new URLSearchParams(location.search);
-        if (params.get('error') === 'unauthorized') {
+        const forceParam = params.get('force');
+        const errorParam = params.get('error');
+        
+        // If there's a force parameter, maintain logout state
+        if (forceParam === 'true') {
+            console.log('Force parameter detected, maintaining logout state');
+            // Set/refresh logout flags
+            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            
+            // Aggressively clear all cookies
+            clearAllCookies();
+        } else {
+            console.log('No force parameter, clearing logout flags to allow login');
+            // Clear ALL logout flags when the login page loads without force parameter
+            // This ensures users can log in after a previous logout
+            localStorage.removeItem('FORCE_LOGOUT');
+            sessionStorage.removeItem('FORCE_LOGOUT');
+            localStorage.removeItem('user_logged_out');
+            sessionStorage.removeItem('manual_logout');
+        }
+        
+        // Handle unauthorized error
+        if (errorParam === 'unauthorized') {
             // Set error message for unauthorized emails
             setError('Only university students with .student.iul.ac.in email can sign up!');
             
             // Ensure we're completely logged out if there was an unauthorized attempt
             // This prevents the app from treating non-university emails as logged in
-            document.cookie.split(';').forEach(cookie => {
-                const [name] = cookie.trim().split('=');
-                if (name) {
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
-                }
-            });
+            clearAllCookies();
+            
+            // Set logout flags to prevent auto-login
+            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
             
             console.log('Unauthorized email detected, cleared all authentication data');
         }
+        
         // Cleanup loading state when component unmounts
         return () => setLoading(false);
     }, [location]);
+    
+    // Helper function to clear all cookies
+    const clearAllCookies = () => {
+        document.cookie.split(';').forEach(cookie => {
+            const [name] = cookie.trim().split('=');
+            if (!name) return;
+            
+            // Clear with multiple domain/path combinations
+            const hostname = window.location.hostname;
+            const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
+            const domainParts = hostname.split('.');
+            const topDomain = domainParts.length > 1 ? 
+                domainParts.slice(domainParts.length - 2).join('.') : hostname;
+                
+            const domains = [hostname, hostnameWithoutWWW, topDomain, '', null];
+            const paths = ['/', '/api', '/auth', '/api/auth', '', null];
+            
+            domains.forEach(domain => {
+                paths.forEach(path => {
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                        (path ? `; path=${path}` : '') + 
+                        (domain ? `; domain=${domain}` : '');
+                        
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                        (path ? `; path=${path}` : '') + 
+                        (domain ? `; domain=${domain}` : '') + 
+                        '; secure';
+                });
+            });
+        });
+    };
 
     const handleGoogleLogin = async () => {
         setLoading(true);
         setError(null);
         
         try {
-            // Clear ALL logout flags again right before login attempt
-            // This is a belt-and-suspenders approach to ensure login works
+            console.log('Starting Google login process');
+            
+            // First clear all cookies to ensure a fresh login
+            clearAllCookies();
+            
+            // Clear ALL logout flags to ensure login works
             localStorage.removeItem('FORCE_LOGOUT');
             sessionStorage.removeItem('FORCE_LOGOUT');
             localStorage.removeItem('user_logged_out');
             sessionStorage.removeItem('manual_logout');
             
-            console.log('Logout flags cleared, redirecting to Google OAuth:', API.auth.google);
+            // Also clear any other potential auth data
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            localStorage.removeItem('auth');
+            sessionStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('auth');
             
-            // Redirect to Google OAuth
-            window.location.href = API.auth.google;
+            console.log('All auth data cleared, redirecting to Google OAuth:', API.auth.google);
+            
+            // Add a small delay to ensure all clearing operations complete
+            setTimeout(() => {
+                // Redirect to Google OAuth with cache-busting parameter
+                window.location.href = `${API.auth.google}?t=${Date.now()}`;
+            }, 100);
         } catch (error) {
             console.error('Login error:', error);
             setError('Failed to connect to authentication service');

@@ -20,6 +20,10 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // First, check the URL for a force parameter that indicates a forced logout
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceParam = urlParams.get('force');
+    
     // Check for the FORCE_LOGOUT flag in both localStorage and sessionStorage
     const forceLogoutLS = localStorage.getItem('FORCE_LOGOUT');
     const forceLogoutSS = sessionStorage.getItem('FORCE_LOGOUT');
@@ -28,27 +32,57 @@ function App() {
     const oldLogoutLS = localStorage.getItem('user_logged_out');
     const oldLogoutSS = sessionStorage.getItem('manual_logout');
     
-    // If any logout flag is present, prevent automatic login
-    if (forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
-      console.log('Logout flag detected, preventing automatic login');
+    // If any logout flag is present or force parameter is in URL, prevent automatic login
+    if (forceParam === 'true' || forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
+      console.log('Logout flag or force parameter detected, preventing automatic login');
       
-      // Clear all auth-related cookies
+      // Aggressively clear all auth-related cookies
       const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
       cookieNames.forEach(name => {
         if (!name) return;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+        
+        // Clear with multiple domain/path combinations
+        const hostname = window.location.hostname;
+        const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
+        const domainParts = hostname.split('.');
+        const topDomain = domainParts.length > 1 ? 
+            domainParts.slice(domainParts.length - 2).join('.') : hostname;
+            
+        const domains = [hostname, hostnameWithoutWWW, topDomain, '', null];
+        const paths = ['/', '/api', '/auth', '/api/auth', '', null];
+        
+        domains.forEach(domain => {
+            paths.forEach(path => {
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                    (path ? `; path=${path}` : '') + 
+                    (domain ? `; domain=${domain}` : '');
+                    
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                    (path ? `; path=${path}` : '') + 
+                    (domain ? `; domain=${domain}` : '') + 
+                    '; secure';
+            });
+        });
       });
       
       // Set as not authenticated
       setIsAuthenticated(false);
       setIsLoading(false);
       
-      // Clear ALL logout flags to allow login attempts
-      localStorage.removeItem('FORCE_LOGOUT');
-      sessionStorage.removeItem('FORCE_LOGOUT');
-      localStorage.removeItem('user_logged_out');
-      sessionStorage.removeItem('manual_logout');
+      // Keep the logout flags active to prevent auto-login on page refresh
+      // Only clear them if we're on the login page and the user is actively trying to log in
+      if (window.location.pathname === '/login' && !forceParam) {
+        console.log('On login page, clearing logout flags to allow login attempt');
+        localStorage.removeItem('FORCE_LOGOUT');
+        sessionStorage.removeItem('FORCE_LOGOUT');
+        localStorage.removeItem('user_logged_out');
+        sessionStorage.removeItem('manual_logout');
+      } else {
+        console.log('Maintaining logout flags to prevent auto-login');
+        // Refresh the logout flags to ensure they don't expire
+        localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+        sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+      }
       
       return;
     }
@@ -56,11 +90,20 @@ function App() {
     // Check authentication status when the app loads
     const checkAuthStatus = async (retryCount = 0) => {
       try {
-        // Clear any remaining logout flags to ensure login works
-        localStorage.removeItem('FORCE_LOGOUT');
-        sessionStorage.removeItem('FORCE_LOGOUT');
-        localStorage.removeItem('user_logged_out');
-        sessionStorage.removeItem('manual_logout');
+        // Check for logout flags again before making the API call
+        // This ensures we don't check auth status if the user has logged out
+        const forceLogoutLS = localStorage.getItem('FORCE_LOGOUT');
+        const forceLogoutSS = sessionStorage.getItem('FORCE_LOGOUT');
+        const oldLogoutLS = localStorage.getItem('user_logged_out');
+        const oldLogoutSS = sessionStorage.getItem('manual_logout');
+        
+        // If any logout flag is present, don't check auth status
+        if (forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
+          console.log('Logout flags detected, skipping auth check and treating as logged out');
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
 
         console.log(`Checking auth status with API (attempt ${retryCount + 1}):`, API.auth.status);
         
