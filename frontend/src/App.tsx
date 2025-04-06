@@ -19,11 +19,26 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user manually logged out
+    // Check for persistent logout flag in localStorage (survives browser restarts)
+    const userLoggedOut = localStorage.getItem('user_logged_out');
+    
+    // Check for session-based logout flag (only survives page refreshes)
     const manualLogout = sessionStorage.getItem('manual_logout');
-    if (manualLogout === 'true') {
-      // Clear the flag
+    
+    // If either logout flag is set, keep the user logged out
+    if (userLoggedOut === 'true' || manualLogout === 'true') {
+      console.log('Logout flag detected, preventing automatic login');
+      
+      // Clear the flags
+      localStorage.removeItem('user_logged_out');
       sessionStorage.removeItem('manual_logout');
+      
+      // Clear any remaining auth cookies to be extra safe
+      document.cookie.split(';').forEach(cookie => {
+        const [name] = cookie.trim().split('=');
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+      });
+      
       // Set as not authenticated
       setIsAuthenticated(false);
       setIsLoading(false);
@@ -31,13 +46,31 @@ function App() {
     }
     
     // Check authentication status when the app loads
-    const checkAuthStatus = async () => {
+    const checkAuthStatus = async (retryCount = 0) => {
       try {
-        console.log('Checking auth status with API:', API.auth.status);
+        console.log(`Checking auth status with API (attempt ${retryCount + 1}):`, API.auth.status);
+        
+        // First, check if we have any auth-related items in localStorage
+        // If not, we can skip the API call and assume not authenticated
+        const hasLocalAuthItems = Object.keys(localStorage).some(key => 
+          key.toLowerCase().includes('token') || 
+          key.toLowerCase().includes('auth') || 
+          key.toLowerCase().includes('user')
+        );
+        
+        if (!hasLocalAuthItems) {
+          console.log('No auth items found in localStorage, skipping auth check');
+          setIsAuthenticated(false);
+          return;
+        }
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
         const response = await fetch(API.auth.status, {
           method: 'GET',
           credentials: 'include',
+          signal: controller.signal,
           // Add headers to prevent CORS preflight issues
           headers: {
             'Accept': 'application/json',
@@ -45,18 +78,44 @@ function App() {
           }
         });
         
+        clearTimeout(timeoutId);
+        
         if (!response.ok) {
           throw new Error(`Auth check failed with status: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('Auth check response:', data);
         setIsAuthenticated(data.isAuthenticated);
+        
+        // If we're not authenticated according to the server, clear any local auth data
+        if (!data.isAuthenticated) {
+          console.log('Server reports not authenticated, clearing any local auth data');
+          // Set the logout flag to prevent auto-login attempts
+          localStorage.setItem('user_logged_out', 'true');
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
-        // If authentication check fails, assume user is not authenticated
+        
+        // Properly type the error for TypeScript
+        const err = error as Error;
+        
+        // Retry up to 2 times if the error is likely temporary (network issue)
+        if (retryCount < 2 && (
+          err.name === 'AbortError' || 
+          (err.message && err.message.includes('NetworkError'))
+        )) {
+          console.log(`Retrying auth check (${retryCount + 1}/2)...`);
+          setTimeout(() => checkAuthStatus(retryCount + 1), 1000); // Wait 1 second before retry
+          return;
+        }
+        
+        // If authentication check fails after retries, assume user is not authenticated
         setIsAuthenticated(false);
       } finally {
-        setIsLoading(false);
+        if (retryCount === 0 || retryCount >= 2) {
+          setIsLoading(false);
+        }
       }
     };
 

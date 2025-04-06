@@ -12,8 +12,8 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
 
     const handleSignOut = () => {
-        // DIRECT CLIENT-SIDE SOLUTION
-        // This approach doesn't depend on any server endpoints
+        // ENHANCED CLIENT-SIDE LOGOUT SOLUTION
+        console.log('Executing enhanced logout procedure');
         
         // 1. Save theme preference
         const currentThemePreference = localStorage.getItem('darkMode');
@@ -24,27 +24,49 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
             localStorage.setItem('darkMode', currentThemePreference);
         }
         
-        // 3. Clear sessionStorage
+        // 3. Set a PERSISTENT logout flag in localStorage
+        // This will be checked on app startup even if the browser is closed and reopened
+        localStorage.setItem('user_logged_out', 'true');
+        
+        // 4. Clear sessionStorage
         sessionStorage.clear();
-        
-        // 4. Clear all cookies (both authentication and session cookies)
-        document.cookie.split(';').forEach(cookie => {
-            const [name] = cookie.trim().split('=');
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-            // Also try with different paths to ensure all cookies are cleared
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-        });
-        
-        // 5. Set a flag to indicate manual logout
         sessionStorage.setItem('manual_logout', 'true');
         
-        // 6. Force a hard navigation to login page (not just a React router navigation)
-        // This ensures a complete page reload and state reset
+        // 5. Clear all cookies with multiple approaches to ensure complete removal
+        const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
+        const domains = [window.location.hostname, '', null, undefined, 'localhost'];
+        const paths = ['/', '/api', '', null, undefined];
+        
+        cookieNames.forEach(name => {
+            // Try multiple domain and path combinations to ensure all cookies are cleared
+            domains.forEach(domain => {
+                paths.forEach(path => {
+                    // Standard cookie clearing
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                        (path ? `; path=${path}` : '') + 
+                        (domain ? `; domain=${domain}` : '');
+                });
+            });
+        });
+        
+        // 6. Also try to make a logout request to the server if possible
+        try {
+            fetch(`${API.baseUrl}/auth/logout`, {
+                method: 'GET',
+                credentials: 'include',
+                mode: 'no-cors' // Use no-cors to prevent CORS issues
+            }).catch(() => console.log('Server logout request failed, continuing with client logout'));
+        } catch (e) {
+            console.log('Error during server logout attempt:', e);
+        }
+        
+        // 7. Force a complete page reload and navigation to login
+        console.log('Redirecting to login page');
         window.location.replace('/login');
         
-        // 7. If that doesn't work, try a more aggressive approach after a short delay
+        // 8. Fallback redirect with a delay in case the first one doesn't work
         setTimeout(() => {
-            console.log('Fallback logout triggered');
+            console.log('Fallback logout redirect triggered');
             window.location.href = '/login';
         }, 500);
     };
