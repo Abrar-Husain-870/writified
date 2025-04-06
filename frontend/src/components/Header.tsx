@@ -12,53 +12,41 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
 
     const handleSignOut = () => {
-        // First, create a hidden iframe to make a proper logout request
-        const logoutFrame = document.createElement('iframe');
-        logoutFrame.style.display = 'none';
-        document.body.appendChild(logoutFrame);
+        // DIRECT CLIENT-SIDE SOLUTION
+        // This approach doesn't depend on any server endpoints
         
-        // Set up a message listener to know when the iframe has loaded
-        window.addEventListener('message', function logoutComplete(event) {
-            if (event.data === 'logout_complete') {
-                // Save the current theme preference
-                const currentThemePreference = localStorage.getItem('darkMode');
-                
-                // Clear all localStorage except theme
-                localStorage.clear();
-                if (currentThemePreference) {
-                    localStorage.setItem('darkMode', currentThemePreference);
-                }
-                
-                // Clear all sessionStorage
-                sessionStorage.clear();
-                
-                // Clear all cookies
-                document.cookie.split(';').forEach(cookie => {
-                    const [name] = cookie.trim().split('=');
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-                });
-                
-                // Remove the iframe
-                document.body.removeChild(logoutFrame);
-                
-                // Remove the event listener
-                window.removeEventListener('message', logoutComplete);
-                
-                console.log('Logout completed successfully');
-                
-                // Force a hard reload to the login page
-                window.location.href = '/login';
-            }
+        // 1. Save theme preference
+        const currentThemePreference = localStorage.getItem('darkMode');
+        
+        // 2. Clear localStorage (except theme)
+        localStorage.clear();
+        if (currentThemePreference) {
+            localStorage.setItem('darkMode', currentThemePreference);
+        }
+        
+        // 3. Clear sessionStorage
+        sessionStorage.clear();
+        
+        // 4. Clear all cookies (both authentication and session cookies)
+        document.cookie.split(';').forEach(cookie => {
+            const [name] = cookie.trim().split('=');
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+            // Also try with different paths to ensure all cookies are cleared
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
         });
         
-        // Set the iframe source to the logout endpoint
-        logoutFrame.src = `${API.baseUrl}/auth/logout`;
+        // 5. Set a flag to indicate manual logout
+        sessionStorage.setItem('manual_logout', 'true');
         
-        // Set a fallback timeout in case the message event doesn't fire
+        // 6. Force a hard navigation to login page (not just a React router navigation)
+        // This ensures a complete page reload and state reset
+        window.location.replace('/login');
+        
+        // 7. If that doesn't work, try a more aggressive approach after a short delay
         setTimeout(() => {
-            // Force redirect to login page after 2 seconds regardless
+            console.log('Fallback logout triggered');
             window.location.href = '/login';
-        }, 2000);
+        }, 500);
     };
 
     return (

@@ -19,6 +19,17 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Check if user manually logged out
+    const manualLogout = sessionStorage.getItem('manual_logout');
+    if (manualLogout === 'true') {
+      // Clear the flag
+      sessionStorage.removeItem('manual_logout');
+      // Set as not authenticated
+      setIsAuthenticated(false);
+      setIsLoading(false);
+      return;
+    }
+    
     // Check authentication status when the app loads
     const checkAuthStatus = async () => {
       try {
