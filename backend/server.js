@@ -1405,17 +1405,18 @@ app.get('/auth/logout', authCors, (req, res) => {
                 // Reset the flag after successful logout
                 isLogoutInProgress = false;
                 
-                // Redirect to login page
-                res.redirect(`${frontendURL}/login`);
+                // Redirect to the logout-complete.html page instead of login
+                // This will trigger the postMessage event to complete the logout process
+                res.redirect(`${frontendURL}/logout-complete.html`);
             });
         } else {
-            // Redirect to login page if session doesn't exist
+            // Redirect to logout-complete.html if session doesn't exist
             console.log(`User ${userId} logged out (no session found)`);
             
             // Reset the flag
             isLogoutInProgress = false;
             
-            res.redirect(`${frontendURL}/login`);
+            res.redirect(`${frontendURL}/logout-complete.html`);
         }
     });
 });

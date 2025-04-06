@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Logout Complete</title>
+    <script>
+        // Send a message to the parent window that logout is complete
+        window.onload = function() {
+            window.parent.postMessage('logout_complete', '*');
+        };
+    </script>
+</head>
+<body>
+    <p>Logout complete. Redirecting...</p>
+</body>
+</html>

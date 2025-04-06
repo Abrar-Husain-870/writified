@@ -12,32 +12,53 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
 
     const handleSignOut = () => {
-        // Save the current theme preference before logout
-        const currentThemePreference = localStorage.getItem('darkMode');
+        // First, create a hidden iframe to make a proper logout request
+        const logoutFrame = document.createElement('iframe');
+        logoutFrame.style.display = 'none';
+        document.body.appendChild(logoutFrame);
         
-        // Clear authentication-related localStorage items but preserve theme
-        const keysToKeep = ['darkMode'];
-        const keysToRemove = Object.keys(localStorage).filter(key => !keysToKeep.includes(key));
-        
-        // Remove only authentication-related items
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        
-        // Clear all sessionStorage items
-        sessionStorage.clear();
-        
-        // Expire authentication cookies but be careful with domain/path
-        const cookiesToExpire = ['connect.sid', 'session', 'token', 'auth', 'user'];
-        document.cookie.split(';').forEach(cookie => {
-            const [name] = cookie.trim().split('=');
-            if (cookiesToExpire.some(c => name.toLowerCase().includes(c.toLowerCase()))) {
-                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        // Set up a message listener to know when the iframe has loaded
+        window.addEventListener('message', function logoutComplete(event) {
+            if (event.data === 'logout_complete') {
+                // Save the current theme preference
+                const currentThemePreference = localStorage.getItem('darkMode');
+                
+                // Clear all localStorage except theme
+                localStorage.clear();
+                if (currentThemePreference) {
+                    localStorage.setItem('darkMode', currentThemePreference);
+                }
+                
+                // Clear all sessionStorage
+                sessionStorage.clear();
+                
+                // Clear all cookies
+                document.cookie.split(';').forEach(cookie => {
+                    const [name] = cookie.trim().split('=');
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+                });
+                
+                // Remove the iframe
+                document.body.removeChild(logoutFrame);
+                
+                // Remove the event listener
+                window.removeEventListener('message', logoutComplete);
+                
+                console.log('Logout completed successfully');
+                
+                // Force a hard reload to the login page
+                window.location.href = '/login';
             }
         });
         
-        console.log('Logged out: Cleared authentication data while preserving theme settings');
+        // Set the iframe source to the logout endpoint
+        logoutFrame.src = `${API.baseUrl}/auth/logout`;
         
-        // Redirect to login page with a clean URL (no hash or query params)
-        window.location.replace('/login');
+        // Set a fallback timeout in case the message event doesn't fire
+        setTimeout(() => {
+            // Force redirect to login page after 2 seconds regardless
+            window.location.href = '/login';
+        }, 2000);
     };
 
     return (
