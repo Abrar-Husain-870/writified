@@ -97,9 +97,10 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
         
         // 5. Start the server-side logout process
         try {
-            // Use the iframe for the server logout without query parameters to avoid CORS issues
-            logoutFrame.src = `${API.baseUrl}/auth/logout`;
-            console.log('Server-side logout initiated');
+            // Use the iframe for the server logout with the correct endpoint
+            // The server has a route at /api/auth/logout that redirects to /auth/logout
+            logoutFrame.src = `${API.auth.logout}`;
+            console.log('Server-side logout initiated with correct endpoint:', API.auth.logout);
         } catch (e) {
             console.error('Error during server logout attempt:', e);
             // If server logout fails, proceed with client-side logout
