@@ -138,15 +138,19 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
             console.log('Attempting server-side logout with fetch');
             
             // Use fetch with credentials to ensure cookies are sent
-            fetch(`${API.baseUrl}/auth/logout`, {
+            fetch(API.auth.logout, {
                 method: 'GET',
                 credentials: 'include',
-                // Use no-cors mode to avoid CORS issues
-                mode: 'no-cors'
+                // Don't use no-cors mode so we can detect errors
+                // mode: 'no-cors'
             })
-            .then(() => {
-                console.log('Server-side logout fetch completed');
-                // Even if successful, still do client-side logout after a short delay
+            .then(response => {
+                if (response.ok) {
+                    console.log('Server-side logout successful');
+                } else {
+                    console.warn(`Server-side logout returned status: ${response.status}. Proceeding with client-side logout.`);
+                }
+                // Even if there was an error, still do client-side logout
                 if (!logoutCompleted) {
                     logoutCompleted = true;
                     completeClientLogout();

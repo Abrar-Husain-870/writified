@@ -29,7 +29,7 @@ export const API = {
   auth: {
     login: `${API_URL}/api/auth/login`,
     register: `${API_URL}/api/auth/register`,
-    logout: `${API_URL}/auth/logout`, // Changed to match the actual server endpoint
+    logout: `${API_URL}/api/auth/logout`, // Updated to use /api/auth/logout
     googleLogin: `${API_URL}/api/auth/google`,
     me: `${API_URL}/api/auth/me`,
     status: `${API_URL}/auth/status`,
