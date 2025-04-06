@@ -14,11 +14,6 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const handleSignOut = () => {
         console.log('Executing complete logout procedure');
         
-        // Create a hidden iframe for the server-side logout
-        const logoutFrame = document.createElement('iframe');
-        logoutFrame.style.display = 'none';
-        document.body.appendChild(logoutFrame);
-        
         // 1. Save theme preference
         const currentThemePreference = localStorage.getItem('darkMode');
         
@@ -101,79 +96,15 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
                 });
             });
             
-            // Remove the iframe if it exists
-            if (document.body.contains(logoutFrame)) {
-                document.body.removeChild(logoutFrame);
-            }
-            
             console.log('Client-side logout completed, redirecting to login page');
             
             // Force navigation to login page with cache-busting parameter
             window.location.href = `/login?t=${Date.now()}&force=true`;
         };
         
-        // 4. Set up a listener for the iframe completion or timeout
-        let logoutCompleted = false;
-        
-        // Listen for message from the logout-complete.html page
-        window.addEventListener('message', function logoutHandler(event) {
-            if (event.data === 'logout_complete' && !logoutCompleted) {
-                logoutCompleted = true;
-                window.removeEventListener('message', logoutHandler);
-                completeClientLogout();
-            }
-        });
-        
-        // Set a timeout to ensure logout completes even if the server response fails
-        setTimeout(() => {
-            if (!logoutCompleted) {
-                logoutCompleted = true;
-                console.log('Logout timeout reached, forcing client-side logout');
-                completeClientLogout();
-            }
-        }, 3000);
-        
-        // 5. Start the server-side logout process using fetch instead of iframe
-        try {
-            console.log('Attempting server-side logout with fetch');
-            
-            // Use fetch with credentials to ensure cookies are sent
-            fetch(API.auth.logout, {
-                method: 'GET',
-                credentials: 'include',
-                // Don't use no-cors mode so we can detect errors
-                // mode: 'no-cors'
-            })
-            .then(response => {
-                if (response.ok) {
-                    console.log('Server-side logout successful');
-                } else {
-                    console.warn(`Server-side logout returned status: ${response.status}. Proceeding with client-side logout.`);
-                }
-                // Even if there was an error, still do client-side logout
-                if (!logoutCompleted) {
-                    logoutCompleted = true;
-                    completeClientLogout();
-                }
-            })
-            .catch(error => {
-                console.error('Fetch error during server logout:', error);
-                // If fetch fails, proceed with client-side logout
-                if (!logoutCompleted) {
-                    logoutCompleted = true;
-                    completeClientLogout();
-                }
-            });
-        } catch (e) {
-            console.error('Error initiating server logout attempt:', e);
-            // If there's an exception, proceed with client-side logout
-            setTimeout(() => {
-                if (!logoutCompleted) {
-                    logoutCompleted = true;
-                    completeClientLogout();
-                }
-            }, 500);
-        }
+        // Skip server-side logout entirely and use client-side logout only
+        console.log('Using client-side logout only for more reliable logout');
+        completeClientLogout();
     };
 
     return (
