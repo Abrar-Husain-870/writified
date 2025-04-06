@@ -44,8 +44,9 @@ function App() {
       setIsAuthenticated(false);
       setIsLoading(false);
       
-      // Don't remove the FORCE_LOGOUT flags - keep them to ensure logout persistence
-      // Only clear the old flags
+      // Clear ALL logout flags to allow login attempts
+      localStorage.removeItem('FORCE_LOGOUT');
+      sessionStorage.removeItem('FORCE_LOGOUT');
       localStorage.removeItem('user_logged_out');
       sessionStorage.removeItem('manual_logout');
       
@@ -55,13 +56,11 @@ function App() {
     // Check authentication status when the app loads
     const checkAuthStatus = async (retryCount = 0) => {
       try {
-        // Check again for logout flags before making the API call
-        // This ensures we don't make unnecessary API calls if we're logged out
-        if (localStorage.getItem('FORCE_LOGOUT') || sessionStorage.getItem('FORCE_LOGOUT')) {
-          console.log('Logout flag detected during auth check, skipping API call');
-          setIsAuthenticated(false);
-          return;
-        }
+        // Clear any remaining logout flags to ensure login works
+        localStorage.removeItem('FORCE_LOGOUT');
+        sessionStorage.removeItem('FORCE_LOGOUT');
+        localStorage.removeItem('user_logged_out');
+        sessionStorage.removeItem('manual_logout');
 
         console.log(`Checking auth status with API (attempt ${retryCount + 1}):`, API.auth.status);
         

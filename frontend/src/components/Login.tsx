@@ -10,6 +10,13 @@ const Login: React.FC<LoginProps> = () => {
     const location = useLocation();
 
     useEffect(() => {
+        // Clear ALL logout flags when the login page loads
+        // This ensures users can log in after a previous logout
+        localStorage.removeItem('FORCE_LOGOUT');
+        sessionStorage.removeItem('FORCE_LOGOUT');
+        localStorage.removeItem('user_logged_out');
+        sessionStorage.removeItem('manual_logout');
+        
         // Check for error in URL params
         const params = new URLSearchParams(location.search);
         if (params.get('error') === 'unauthorized') {
@@ -24,7 +31,14 @@ const Login: React.FC<LoginProps> = () => {
         setError(null);
         
         try {
-            console.log('Redirecting to Google OAuth:', API.auth.google);
+            // Clear ALL logout flags again right before login attempt
+            // This is a belt-and-suspenders approach to ensure login works
+            localStorage.removeItem('FORCE_LOGOUT');
+            sessionStorage.removeItem('FORCE_LOGOUT');
+            localStorage.removeItem('user_logged_out');
+            sessionStorage.removeItem('manual_logout');
+            
+            console.log('Logout flags cleared, redirecting to Google OAuth:', API.auth.google);
             
             // Redirect to Google OAuth
             window.location.href = API.auth.google;
