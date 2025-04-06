@@ -28,6 +28,8 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
         
         // 3. Define a function to handle the complete client-side logout
         const completeClientLogout = () => {
+            console.log('Executing aggressive client-side logout');
+            
             // Clear localStorage (except theme)
             const themeValue = localStorage.getItem('darkMode');
             localStorage.clear();
@@ -43,22 +45,58 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
             sessionStorage.clear();
             sessionStorage.setItem('FORCE_LOGOUT', logoutFlag || Date.now().toString());
             
-            // Aggressively clear all cookies
-            const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
+            // Clear any auth-specific items that might be stored
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            localStorage.removeItem('auth');
+            localStorage.removeItem('session');
+            sessionStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('auth');
+            sessionStorage.removeItem('session');
+            
+            // Super aggressive cookie clearing
+            // First, get all cookie names
+            const cookieNames = document.cookie.split(';')
+                .map(cookie => cookie.trim().split('=')[0])
+                .filter(name => name);
+            
+            console.log('Clearing cookies:', cookieNames);
             
             // Try multiple combinations of domain and path to ensure complete cookie removal
-            const domains = [window.location.hostname, '', 'localhost', null];
-            const paths = ['/', '/api', '/auth', '', null];
+            const hostname = window.location.hostname;
+            // Include the hostname without www if it has www
+            const hostnameWithoutWWW = hostname.startsWith('www.') ? hostname.substring(4) : hostname;
+            // Include just the domain part (e.g., example.com from sub.example.com)
+            const domainParts = hostname.split('.');
+            const topDomain = domainParts.length > 1 ? 
+                domainParts.slice(domainParts.length - 2).join('.') : hostname;
             
+            const domains = [
+                hostname,
+                hostnameWithoutWWW,
+                topDomain,
+                '',
+                'localhost',
+                null
+            ];
+            
+            const paths = ['/', '/api', '/auth', '/api/auth', '', null];
+            
+            // For each cookie, try all domain/path combinations
             cookieNames.forEach(name => {
-                if (!name) return;
-                
                 domains.forEach(domain => {
                     paths.forEach(path => {
                         // Clear with various combinations
                         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
                             (path ? `; path=${path}` : '') + 
                             (domain ? `; domain=${domain}` : '');
+                        
+                        // Also try with secure and httpOnly flags
+                        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                            (path ? `; path=${path}` : '') + 
+                            (domain ? `; domain=${domain}` : '') +
+                            '; secure';
                     });
                 });
             });
@@ -71,7 +109,7 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
             console.log('Client-side logout completed, redirecting to login page');
             
             // Force navigation to login page with cache-busting parameter
-            window.location.href = `/login?t=${Date.now()}`;
+            window.location.href = `/login?t=${Date.now()}&force=true`;
         };
         
         // 4. Set up a listener for the iframe completion or timeout
@@ -95,15 +133,36 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
             }
         }, 3000);
         
-        // 5. Start the server-side logout process
+        // 5. Start the server-side logout process using fetch instead of iframe
         try {
-            // Use the iframe for the server logout with the correct endpoint
-            // The server has a route at /api/auth/logout that redirects to /auth/logout
-            logoutFrame.src = `${API.auth.logout}`;
-            console.log('Server-side logout initiated with correct endpoint:', API.auth.logout);
+            console.log('Attempting server-side logout with fetch');
+            
+            // Use fetch with credentials to ensure cookies are sent
+            fetch(`${API.baseUrl}/auth/logout`, {
+                method: 'GET',
+                credentials: 'include',
+                // Use no-cors mode to avoid CORS issues
+                mode: 'no-cors'
+            })
+            .then(() => {
+                console.log('Server-side logout fetch completed');
+                // Even if successful, still do client-side logout after a short delay
+                if (!logoutCompleted) {
+                    logoutCompleted = true;
+                    completeClientLogout();
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error during server logout:', error);
+                // If fetch fails, proceed with client-side logout
+                if (!logoutCompleted) {
+                    logoutCompleted = true;
+                    completeClientLogout();
+                }
+            });
         } catch (e) {
-            console.error('Error during server logout attempt:', e);
-            // If server logout fails, proceed with client-side logout
+            console.error('Error initiating server logout attempt:', e);
+            // If there's an exception, proceed with client-side logout
             setTimeout(() => {
                 if (!logoutCompleted) {
                     logoutCompleted = true;
