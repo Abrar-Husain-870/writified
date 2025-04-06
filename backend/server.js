@@ -53,23 +53,33 @@ function validatePhoneNumber(phoneNumber) {
     return phoneRegex.test(phoneNumber.replace(/\D/g, ''));
 }
 
+// Create a single database pool for the entire application
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    },
+    // Add connection pool settings for better stability
+    max: 20, // Maximum number of clients the pool should contain
+    idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
+    connectionTimeoutMillis: 2000 // How long to wait for a connection to become available
+});
+
+// Add error handler for the pool
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
+});
+
 // Initialize database on startup in production
 // This will only create tables if they don't exist
 if (process.env.NODE_ENV === 'production' || process.env.INIT_DB === 'true') {
     console.log('Checking database setup...');
-    setupDatabase()
+    setupDatabase(pool)
         .then(() => console.log('Database check complete'))
         .catch(err => console.error('Database check failed:', err));
 }
 
 const app = express();
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
 
 // Create a proxy around the database pool to prevent DELETE operations during logout
 const originalQuery = pool.query;
