@@ -9,10 +9,30 @@ const pool = new Pool({
 });
 
 async function setupDatabase() {
+    let client;
     try {
         console.log('Connecting to database...');
-        const client = await pool.connect();
+        client = await pool.connect();
         console.log('✅ Connected to PostgreSQL database');
+        
+        // First, check if the users table already exists
+        const checkTableResult = await client.query(`
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'users'
+            );
+        `);
+        
+        const tablesExist = checkTableResult.rows[0].exists;
+        
+        if (tablesExist) {
+            console.log('✅ Database tables already exist, skipping initialization');
+            return;
+        }
+        
+        // If tables don't exist, proceed with initialization
+        console.log('No existing tables found, initializing database...');
         
         // Read and execute SQL file
         const sqlPath = path.join(__dirname, 'init.sql');
@@ -23,13 +43,14 @@ async function setupDatabase() {
         console.log('Executing SQL commands...');
         await client.query(sqlContent);
         console.log('✅ Database tables created successfully');
-        
-        client.release();
     } catch (error) {
-        console.error('❌ Error creating database tables:', error);
-        process.exit(1);
+        console.error('❌ Error during database setup:', error);
+        // Don't exit the process on error, just log it
+        // process.exit(1);
     } finally {
-        await pool.end();
+        if (client) {
+            client.release();
+        }
     }
 }
 

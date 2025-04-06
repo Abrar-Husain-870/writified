@@ -54,11 +54,12 @@ function validatePhoneNumber(phoneNumber) {
 }
 
 // Initialize database on startup in production
-if (process.env.NODE_ENV === 'production') {
-    console.log('Initializing database...');
+// This will only create tables if they don't exist
+if (process.env.NODE_ENV === 'production' || process.env.INIT_DB === 'true') {
+    console.log('Checking database setup...');
     setupDatabase()
-        .then(() => console.log('Database initialization complete'))
-        .catch(err => console.error('Database initialization failed:', err));
+        .then(() => console.log('Database check complete'))
+        .catch(err => console.error('Database check failed:', err));
 }
 
 const app = express();
