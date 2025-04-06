@@ -17,6 +17,24 @@ const Login: React.FC<LoginProps> = () => {
         const forceParam = params.get('force');
         const errorParam = params.get('error');
         
+        // Handle unauthorized error first
+        if (errorParam === 'unauthorized') {
+            console.log('Unauthorized error detected');
+            // Set error message for unauthorized emails
+            setError('Only university students with .student.iul.ac.in email can sign up!');
+            
+            // Ensure we're completely logged out if there was an unauthorized attempt
+            // This prevents the app from treating non-university emails as logged in
+            clearAllCookies();
+            
+            // Always set logout flags for unauthorized errors to prevent auto-login
+            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            
+            console.log('Unauthorized email detected, cleared all authentication data and set logout flags');
+            return; // Exit early to prevent the next block from clearing the flags
+        }
+        
         // If there's a force parameter, maintain logout state
         if (forceParam === 'true') {
             console.log('Force parameter detected, maintaining logout state');
@@ -27,29 +45,13 @@ const Login: React.FC<LoginProps> = () => {
             // Aggressively clear all cookies
             clearAllCookies();
         } else {
-            console.log('No force parameter, clearing logout flags to allow login');
-            // Clear ALL logout flags when the login page loads without force parameter
-            // This ensures users can log in after a previous logout
+            // Only clear logout flags if there's no error and no force parameter
+            // This allows normal login attempts
+            console.log('No force parameter or error, clearing logout flags to allow login');
             localStorage.removeItem('FORCE_LOGOUT');
             sessionStorage.removeItem('FORCE_LOGOUT');
             localStorage.removeItem('user_logged_out');
             sessionStorage.removeItem('manual_logout');
-        }
-        
-        // Handle unauthorized error
-        if (errorParam === 'unauthorized') {
-            // Set error message for unauthorized emails
-            setError('Only university students with .student.iul.ac.in email can sign up!');
-            
-            // Ensure we're completely logged out if there was an unauthorized attempt
-            // This prevents the app from treating non-university emails as logged in
-            clearAllCookies();
-            
-            // Set logout flags to prevent auto-login
-            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-            sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
-            
-            console.log('Unauthorized email detected, cleared all authentication data');
         }
         
         // Cleanup loading state when component unmounts

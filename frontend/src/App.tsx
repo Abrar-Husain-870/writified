@@ -167,7 +167,9 @@ function App() {
           console.log('Checking if email is a valid university email:', email);
           
           // Check if the email is from the university domain
-          const isValidUniversityEmail = email.endsWith('@student.iul.ac.in');
+          // Make sure to use lowercase for case-insensitive comparison
+          const emailLower = email.toLowerCase();
+          const isValidUniversityEmail = emailLower.endsWith('@student.iul.ac.in');
           
           if (!isValidUniversityEmail) {
             console.log('Non-university email detected, forcing logout');
@@ -184,6 +186,8 @@ function App() {
             // Redirect to login page with unauthorized error
             window.location.href = '/login?error=unauthorized&force=true';
             return;
+          } else {
+            console.log('Valid university email confirmed:', email);
           }
         }
         
@@ -262,24 +266,29 @@ const AppContent = ({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: 
   useEffect(() => {
     // Check for unauthorized error in URL params
     const params = new URLSearchParams(location.search);
-    if (location.pathname === '/account-deleted' || params.get('error') === 'unauthorized') {
+    const errorParam = params.get('error');
+    const forceParam = params.get('force');
+    
+    if (location.pathname === '/account-deleted' || errorParam === 'unauthorized') {
       console.log('Detected account-deleted page or unauthorized error, resetting authentication state');
       setIsAuthenticated(false);
       
-      // Clear all authentication data
-      localStorage.removeItem('FORCE_LOGOUT');
-      sessionStorage.removeItem('FORCE_LOGOUT');
-      localStorage.removeItem('user_logged_out');
-      sessionStorage.removeItem('manual_logout');
+      // If there's an unauthorized error and force parameter, set logout flags instead of clearing them
+      if (errorParam === 'unauthorized' && forceParam === 'true') {
+        console.log('Unauthorized error with force parameter, setting logout flags');
+        localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+        sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+      } else if (location.pathname === '/account-deleted') {
+        // Only clear logout flags for account deleted page
+        console.log('Account deleted page, clearing logout flags');
+        localStorage.removeItem('FORCE_LOGOUT');
+        sessionStorage.removeItem('FORCE_LOGOUT');
+        localStorage.removeItem('user_logged_out');
+        sessionStorage.removeItem('manual_logout');
+      }
       
       // Clear cookies
-      document.cookie.split(';').forEach(cookie => {
-        const [name] = cookie.trim().split('=');
-        if (name) {
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
-        }
-      });
+      clearAllCookies();
     }
   }, [location.pathname, location.search, setIsAuthenticated]);
 
