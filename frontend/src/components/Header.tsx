@@ -24,13 +24,19 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
             localStorage.setItem('darkMode', currentThemePreference);
         }
         
-        // 3. Set a PERSISTENT logout flag in localStorage
-        // This will be checked on app startup even if the browser is closed and reopened
-        localStorage.setItem('user_logged_out', 'true');
+        // 3. Set logout flags BEFORE clearing storage
+        // Store the logout flag in both localStorage (for persistence) and sessionStorage (for immediate use)
+        const LOGOUT_FLAG = 'manual_logout';
+        localStorage.setItem(LOGOUT_FLAG, 'true');
+        sessionStorage.setItem(LOGOUT_FLAG, 'true');
         
-        // 4. Clear sessionStorage
+        // 4. Clear sessionStorage EXCEPT for our logout flag
+        const tempLogoutFlag = sessionStorage.getItem(LOGOUT_FLAG);
         sessionStorage.clear();
-        sessionStorage.setItem('manual_logout', 'true');
+        // Re-add the logout flag after clearing
+        if (tempLogoutFlag) {
+            sessionStorage.setItem(LOGOUT_FLAG, tempLogoutFlag);
+        }
         
         // 5. Clear all cookies with multiple approaches to ensure complete removal
         const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);

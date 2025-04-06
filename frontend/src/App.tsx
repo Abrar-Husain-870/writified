@@ -50,19 +50,12 @@ function App() {
       try {
         console.log(`Checking auth status with API (attempt ${retryCount + 1}):`, API.auth.status);
         
-        // First, check if we have any auth-related items in localStorage
-        // If not, we can skip the API call and assume not authenticated
-        const hasLocalAuthItems = Object.keys(localStorage).some(key => 
-          key.toLowerCase().includes('token') || 
-          key.toLowerCase().includes('auth') || 
-          key.toLowerCase().includes('user')
-        );
+        // Remove this check as it's preventing login
+        // We should always check with the server for authentication status
+        // The server uses cookies for authentication, not localStorage
         
-        if (!hasLocalAuthItems) {
-          console.log('No auth items found in localStorage, skipping auth check');
-          setIsAuthenticated(false);
-          return;
-        }
+        // Clear the logout flag if it exists to allow login
+        localStorage.removeItem('user_logged_out');
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
