@@ -12,8 +12,6 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
 
     const handleSignOut = () => {
-        console.log('Executing complete logout procedure');
-        
         // 1. Save theme preference
         const currentThemePreference = localStorage.getItem('darkMode');
         
@@ -23,8 +21,6 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
         
         // 3. Define a function to handle the complete client-side logout
         const completeClientLogout = () => {
-            console.log('Executing aggressive client-side logout');
-            
             // Clear localStorage (except theme)
             const themeValue = localStorage.getItem('darkMode');
             localStorage.clear();
@@ -55,8 +51,6 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
             const cookieNames = document.cookie.split(';')
                 .map(cookie => cookie.trim().split('=')[0])
                 .filter(name => name);
-            
-            console.log('Clearing cookies:', cookieNames);
             
             // Try multiple combinations of domain and path to ensure complete cookie removal
             const hostname = window.location.hostname;
@@ -96,14 +90,11 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
                 });
             });
             
-            console.log('Client-side logout completed, redirecting to login page');
-            
             // Force navigation to login page with cache-busting parameter
             window.location.href = `/login?t=${Date.now()}&force=true`;
         };
         
         // Skip server-side logout entirely and use client-side logout only
-        console.log('Using client-side logout only for more reliable logout');
         completeClientLogout();
     };
 

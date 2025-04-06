@@ -10,8 +10,6 @@ const Login: React.FC<LoginProps> = () => {
     const location = useLocation();
 
     useEffect(() => {
-        console.log('Login page loaded, checking URL parameters');
-        
         // Check for error in URL params
         const params = new URLSearchParams(location.search);
         const forceParam = params.get('force');
@@ -19,7 +17,6 @@ const Login: React.FC<LoginProps> = () => {
         
         // Handle unauthorized error first
         if (errorParam === 'unauthorized') {
-            console.log('Unauthorized error detected');
             // Set error message for unauthorized emails
             setError('Only university students with .student.iul.ac.in email can sign up!');
             
@@ -31,13 +28,11 @@ const Login: React.FC<LoginProps> = () => {
             localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
             sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
             
-            console.log('Unauthorized email detected, cleared all authentication data and set logout flags');
             return; // Exit early to prevent the next block from clearing the flags
         }
         
         // If there's a force parameter, maintain logout state
         if (forceParam === 'true') {
-            console.log('Force parameter detected, maintaining logout state');
             // Set/refresh logout flags
             localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
             sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
@@ -47,7 +42,6 @@ const Login: React.FC<LoginProps> = () => {
         } else {
             // Only clear logout flags if there's no error and no force parameter
             // This allows normal login attempts
-            console.log('No force parameter or error, clearing logout flags to allow login');
             localStorage.removeItem('FORCE_LOGOUT');
             sessionStorage.removeItem('FORCE_LOGOUT');
             localStorage.removeItem('user_logged_out');
@@ -94,8 +88,6 @@ const Login: React.FC<LoginProps> = () => {
         setError(null);
         
         try {
-            console.log('Starting Google login process');
-            
             // First clear all cookies to ensure a fresh login
             clearAllCookies();
             
@@ -113,15 +105,13 @@ const Login: React.FC<LoginProps> = () => {
             sessionStorage.removeItem('token');
             sessionStorage.removeItem('auth');
             
-            console.log('All auth data cleared, redirecting to Google OAuth:', API.auth.google);
-            
             // Add a small delay to ensure all clearing operations complete
             setTimeout(() => {
                 // Redirect to Google OAuth with cache-busting parameter
                 window.location.href = `${API.auth.google}?t=${Date.now()}`;
             }, 100);
         } catch (error) {
-            console.error('Login error:', error);
+            console.error('Authentication error occurred');
             setError('Failed to connect to authentication service');
             setLoading(false);
         }

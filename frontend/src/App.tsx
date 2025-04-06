@@ -159,20 +159,18 @@ function App() {
         }
         
         const data = await response.json();
-        console.log('Auth check response:', data);
+        // Removed detailed auth response logging for privacy
         
         // Verify that the user has a valid university email if they are authenticated
         if (data.isAuthenticated && data.user && data.user.email) {
           const email = data.user.email;
-          console.log('Checking if email is a valid university email:', email);
-          
           // Check if the email is from the university domain
           // Make sure to use lowercase for case-insensitive comparison
           const emailLower = email.toLowerCase();
           const isValidUniversityEmail = emailLower.endsWith('@student.iul.ac.in');
           
           if (!isValidUniversityEmail) {
-            console.log('Non-university email detected, forcing logout');
+            console.log('Non-university email detected, redirecting to login');
             
             // Set logout flags to prevent automatic login attempts
             localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
@@ -187,7 +185,7 @@ function App() {
             window.location.href = '/login?error=unauthorized&force=true';
             return;
           } else {
-            console.log('Valid university email confirmed:', email);
+            console.log('Valid university email confirmed');
           }
         }
         
