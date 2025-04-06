@@ -20,7 +20,20 @@ const Login: React.FC<LoginProps> = () => {
         // Check for error in URL params
         const params = new URLSearchParams(location.search);
         if (params.get('error') === 'unauthorized') {
+            // Set error message for unauthorized emails
             setError('Only university students with .student.iul.ac.in email can sign up!');
+            
+            // Ensure we're completely logged out if there was an unauthorized attempt
+            // This prevents the app from treating non-university emails as logged in
+            document.cookie.split(';').forEach(cookie => {
+                const [name] = cookie.trim().split('=');
+                if (name) {
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
+                }
+            });
+            
+            console.log('Unauthorized email detected, cleared all authentication data');
         }
         // Cleanup loading state when component unmounts
         return () => setLoading(false);

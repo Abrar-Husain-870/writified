@@ -158,11 +158,30 @@ const AppContent = ({ isAuthenticated, setIsAuthenticated }: { isAuthenticated: 
   const location = useLocation();
   
   // Reset authentication state when account-deleted page is accessed
+  // or when there's an unauthorized error in the URL
   useEffect(() => {
-    if (location.pathname === '/account-deleted') {
+    // Check for unauthorized error in URL params
+    const params = new URLSearchParams(location.search);
+    if (location.pathname === '/account-deleted' || params.get('error') === 'unauthorized') {
+      console.log('Detected account-deleted page or unauthorized error, resetting authentication state');
       setIsAuthenticated(false);
+      
+      // Clear all authentication data
+      localStorage.removeItem('FORCE_LOGOUT');
+      sessionStorage.removeItem('FORCE_LOGOUT');
+      localStorage.removeItem('user_logged_out');
+      sessionStorage.removeItem('manual_logout');
+      
+      // Clear cookies
+      document.cookie.split(';').forEach(cookie => {
+        const [name] = cookie.trim().split('=');
+        if (name) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
+        }
+      });
     }
-  }, [location.pathname, setIsAuthenticated]);
+  }, [location.pathname, location.search, setIsAuthenticated]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
