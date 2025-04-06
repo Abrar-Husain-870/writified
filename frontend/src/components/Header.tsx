@@ -12,69 +12,104 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton = true }) => {
     const navigate = useNavigate();
 
     const handleSignOut = () => {
-        // ENHANCED CLIENT-SIDE LOGOUT SOLUTION
-        console.log('Executing enhanced logout procedure');
+        console.log('Executing complete logout procedure');
+        
+        // Create a hidden iframe for the server-side logout
+        const logoutFrame = document.createElement('iframe');
+        logoutFrame.style.display = 'none';
+        document.body.appendChild(logoutFrame);
         
         // 1. Save theme preference
         const currentThemePreference = localStorage.getItem('darkMode');
         
-        // 2. Clear localStorage (except theme)
-        localStorage.clear();
-        if (currentThemePreference) {
-            localStorage.setItem('darkMode', currentThemePreference);
-        }
+        // 2. Set permanent logout flags in both localStorage and sessionStorage
+        localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+        sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
         
-        // 3. Set logout flags BEFORE clearing storage
-        // Store the logout flag in both localStorage (for persistence) and sessionStorage (for immediate use)
-        const LOGOUT_FLAG = 'manual_logout';
-        localStorage.setItem(LOGOUT_FLAG, 'true');
-        sessionStorage.setItem(LOGOUT_FLAG, 'true');
-        
-        // 4. Clear sessionStorage EXCEPT for our logout flag
-        const tempLogoutFlag = sessionStorage.getItem(LOGOUT_FLAG);
-        sessionStorage.clear();
-        // Re-add the logout flag after clearing
-        if (tempLogoutFlag) {
-            sessionStorage.setItem(LOGOUT_FLAG, tempLogoutFlag);
-        }
-        
-        // 5. Clear all cookies with multiple approaches to ensure complete removal
-        const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
-        const domains = [window.location.hostname, '', null, undefined, 'localhost'];
-        const paths = ['/', '/api', '', null, undefined];
-        
-        cookieNames.forEach(name => {
-            // Try multiple domain and path combinations to ensure all cookies are cleared
-            domains.forEach(domain => {
-                paths.forEach(path => {
-                    // Standard cookie clearing
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
-                        (path ? `; path=${path}` : '') + 
-                        (domain ? `; domain=${domain}` : '');
+        // 3. Define a function to handle the complete client-side logout
+        const completeClientLogout = () => {
+            // Clear localStorage (except theme)
+            const themeValue = localStorage.getItem('darkMode');
+            localStorage.clear();
+            if (themeValue) {
+                localStorage.setItem('darkMode', themeValue);
+            }
+            
+            // Keep the logout flag
+            localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+            
+            // Clear sessionStorage but keep the logout flag
+            const logoutFlag = sessionStorage.getItem('FORCE_LOGOUT');
+            sessionStorage.clear();
+            sessionStorage.setItem('FORCE_LOGOUT', logoutFlag || Date.now().toString());
+            
+            // Aggressively clear all cookies
+            const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
+            
+            // Try multiple combinations of domain and path to ensure complete cookie removal
+            const domains = [window.location.hostname, '', 'localhost', null];
+            const paths = ['/', '/api', '/auth', '', null];
+            
+            cookieNames.forEach(name => {
+                if (!name) return;
+                
+                domains.forEach(domain => {
+                    paths.forEach(path => {
+                        // Clear with various combinations
+                        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT` + 
+                            (path ? `; path=${path}` : '') + 
+                            (domain ? `; domain=${domain}` : '');
+                    });
                 });
             });
+            
+            // Remove the iframe if it exists
+            if (document.body.contains(logoutFrame)) {
+                document.body.removeChild(logoutFrame);
+            }
+            
+            console.log('Client-side logout completed, redirecting to login page');
+            
+            // Force navigation to login page with cache-busting parameter
+            window.location.href = `/login?t=${Date.now()}`;
+        };
+        
+        // 4. Set up a listener for the iframe completion or timeout
+        let logoutCompleted = false;
+        
+        // Listen for message from the logout-complete.html page
+        window.addEventListener('message', function logoutHandler(event) {
+            if (event.data === 'logout_complete' && !logoutCompleted) {
+                logoutCompleted = true;
+                window.removeEventListener('message', logoutHandler);
+                completeClientLogout();
+            }
         });
         
-        // 6. Also try to make a logout request to the server if possible
-        try {
-            fetch(`${API.baseUrl}/auth/logout`, {
-                method: 'GET',
-                credentials: 'include',
-                mode: 'no-cors' // Use no-cors to prevent CORS issues
-            }).catch(() => console.log('Server logout request failed, continuing with client logout'));
-        } catch (e) {
-            console.log('Error during server logout attempt:', e);
-        }
-        
-        // 7. Force a complete page reload and navigation to login
-        console.log('Redirecting to login page');
-        window.location.replace('/login');
-        
-        // 8. Fallback redirect with a delay in case the first one doesn't work
+        // Set a timeout to ensure logout completes even if the server response fails
         setTimeout(() => {
-            console.log('Fallback logout redirect triggered');
-            window.location.href = '/login';
-        }, 500);
+            if (!logoutCompleted) {
+                logoutCompleted = true;
+                console.log('Logout timeout reached, forcing client-side logout');
+                completeClientLogout();
+            }
+        }, 3000);
+        
+        // 5. Start the server-side logout process
+        try {
+            // Use the iframe for the server logout to ensure cookies are included
+            logoutFrame.src = `${API.baseUrl}/auth/logout?t=${Date.now()}`;
+            console.log('Server-side logout initiated');
+        } catch (e) {
+            console.error('Error during server logout attempt:', e);
+            // If server logout fails, proceed with client-side logout
+            setTimeout(() => {
+                if (!logoutCompleted) {
+                    logoutCompleted = true;
+                    completeClientLogout();
+                }
+            }, 500);
+        }
     };
 
     return (

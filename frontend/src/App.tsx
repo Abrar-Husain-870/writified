@@ -19,55 +19,68 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for persistent logout flag in localStorage (survives browser restarts)
-    const userLoggedOut = localStorage.getItem('user_logged_out');
+    // Check for the FORCE_LOGOUT flag in both localStorage and sessionStorage
+    const forceLogoutLS = localStorage.getItem('FORCE_LOGOUT');
+    const forceLogoutSS = sessionStorage.getItem('FORCE_LOGOUT');
     
-    // Check for session-based logout flag (only survives page refreshes)
-    const manualLogout = sessionStorage.getItem('manual_logout');
+    // Also check for older logout flags for backward compatibility
+    const oldLogoutLS = localStorage.getItem('user_logged_out');
+    const oldLogoutSS = sessionStorage.getItem('manual_logout');
     
-    // If either logout flag is set, keep the user logged out
-    if (userLoggedOut === 'true' || manualLogout === 'true') {
+    // If any logout flag is present, prevent automatic login
+    if (forceLogoutLS || forceLogoutSS || oldLogoutLS === 'true' || oldLogoutSS === 'true') {
       console.log('Logout flag detected, preventing automatic login');
       
-      // Clear the flags
-      localStorage.removeItem('user_logged_out');
-      sessionStorage.removeItem('manual_logout');
-      
-      // Clear any remaining auth cookies to be extra safe
-      document.cookie.split(';').forEach(cookie => {
-        const [name] = cookie.trim().split('=');
+      // Clear all auth-related cookies
+      const cookieNames = document.cookie.split(';').map(cookie => cookie.trim().split('=')[0]);
+      cookieNames.forEach(name => {
+        if (!name) return;
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
       });
       
       // Set as not authenticated
       setIsAuthenticated(false);
       setIsLoading(false);
+      
+      // Don't remove the FORCE_LOGOUT flags - keep them to ensure logout persistence
+      // Only clear the old flags
+      localStorage.removeItem('user_logged_out');
+      sessionStorage.removeItem('manual_logout');
+      
       return;
     }
     
     // Check authentication status when the app loads
     const checkAuthStatus = async (retryCount = 0) => {
       try {
+        // Check again for logout flags before making the API call
+        // This ensures we don't make unnecessary API calls if we're logged out
+        if (localStorage.getItem('FORCE_LOGOUT') || sessionStorage.getItem('FORCE_LOGOUT')) {
+          console.log('Logout flag detected during auth check, skipping API call');
+          setIsAuthenticated(false);
+          return;
+        }
+
         console.log(`Checking auth status with API (attempt ${retryCount + 1}):`, API.auth.status);
         
-        // Remove this check as it's preventing login
-        // We should always check with the server for authentication status
-        // The server uses cookies for authentication, not localStorage
-        
-        // Clear the logout flag if it exists to allow login
-        localStorage.removeItem('user_logged_out');
+        // Add cache-busting parameter to prevent cached responses
+        const authCheckUrl = `${API.auth.status}?t=${Date.now()}`;
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
-        const response = await fetch(API.auth.status, {
+        const response = await fetch(authCheckUrl, {
           method: 'GET',
           credentials: 'include',
           signal: controller.signal,
-          // Add headers to prevent CORS preflight issues
+          cache: 'no-store', // Prevent caching
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           }
         });
         
@@ -79,13 +92,23 @@ function App() {
         
         const data = await response.json();
         console.log('Auth check response:', data);
-        setIsAuthenticated(data.isAuthenticated);
         
-        // If we're not authenticated according to the server, clear any local auth data
+        // If we're not authenticated according to the server, set logout flags
         if (!data.isAuthenticated) {
-          console.log('Server reports not authenticated, clearing any local auth data');
-          // Set the logout flag to prevent auto-login attempts
-          localStorage.setItem('user_logged_out', 'true');
+          console.log('Server reports not authenticated, setting logout flags');
+          localStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+          sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString());
+          setIsAuthenticated(false);
+        } else {
+          // Only set authenticated if we're actually authenticated
+          // AND we don't have any logout flags
+          setIsAuthenticated(true);
+          
+          // Clear any existing logout flags to ensure we stay logged in
+          localStorage.removeItem('FORCE_LOGOUT');
+          sessionStorage.removeItem('FORCE_LOGOUT');
+          localStorage.removeItem('user_logged_out');
+          sessionStorage.removeItem('manual_logout');
         }
       } catch (error) {
         console.error('Auth check failed:', error);
